@@ -65,8 +65,8 @@ Assets Manifest Example (Fill in based on “GAMEITEMS” file and create unique
 | :---- | :---- | :---- | :---- | :---- |
 | Item | Broadsword | broadsword | items/tools/weapons | \-10 Damage; common |
 | Item | Health Potion | health\_potion | items/potions/health | \+5HP; common |
-| Background | Red Dungeon Standard Background 1 | red\_dungeon\_bg1 | backgrounds/red\_dungeon | Background for one of the red dungeon rooms (1080x2400 for pixel 7a) scaled to full screen based on device |
-| Icon | Menu Selection Screen | menu\_texture | icons/menu | The main background for full screen popup menus (1080x2400 for pixel 7a) scaled to full screen based on device |
+| Background | Red Dungeon Standard Background 1 | red\_dungeon\_bg1 | backgrounds/red\_dungeon | Background for one of the red dungeon rooms. scaled to full screen based on device |
+| Icon | Menu Selection Screen | menu\_texture | icons/menu | The main background for full screen popup menus. scaled to full screen based on device |
 | Icon | Red Door 1 (LEFT/RIGHT) | red\_door\_1\_lr | icons/rooms | Icon to placed for doors in the red dungeon. Can be clicked to travel to a room on your left or right depending on mirroring |
 | Icon | Red Door 1 (FORWARD) | red\_door\_1\_f | icons/rooms | Same as left and right door but centered in perspective and can travel forward in rooms. |
 | Creature | Demon | demon | entities/hostile | A random enemy creature |
