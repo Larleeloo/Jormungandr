@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1A0A2E">
+
+    <!-- Battle scene -->
+    <com.example.jormungandr.view.CombatCanvasView
+        android:id="@+id/combat_canvas"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Action panel -->
+    <LinearLayout
+        android:id="@+id/action_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:background="#0D0520">
+
+        <TextView
+            android:id="@+id/action_prompt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Choose an action:"
+            android:textColor="#FFD700"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/action_list"
+            android:layout_width="match_parent"
+            android:layout_height="120dp" />
+
+        <Button
+            android:id="@+id/btn_flee"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:text="Flee"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#8B0000"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+</LinearLayout>

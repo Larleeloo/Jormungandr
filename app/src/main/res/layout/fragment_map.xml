@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1A0A2E">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="World Map"
+            android:textColor="#FFD700"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/map_location"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <com.example.jormungandr.view.MapCanvasView
+        android:id="@+id/map_canvas"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Waypoint teleport buttons -->
+    <LinearLayout
+        android:id="@+id/waypoint_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Teleport: "
+            android:textColor="#FFD700"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_teleport_hub"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Hub"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#4B0082"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+</LinearLayout>

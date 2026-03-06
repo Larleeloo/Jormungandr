@@ -1,0 +1,945 @@
+[
+  {
+    "creatureId": "dungeon_rat",
+    "displayName": "Dungeon Rat",
+    "region": 1,
+    "baseHp": 15,
+    "baseAttack": 3,
+    "baseDefense": 1,
+    "xpReward": 15,
+    "spriteId": "dungeon_rat",
+    "spritePath": "entities/hostile/dungeon_rat.png",
+    "placeholderColor": "#AA0000",
+    "abilities": ["bite", "scratch"],
+    "lootTable": [
+      {"itemId": "rat_tail", "weight": 40},
+      {"itemId": "leather", "weight": 30},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "coal", "weight": 15}
+    ],
+    "description": "A filthy oversized rat that lurks in dungeon corridors"
+  },
+  {
+    "creatureId": "skeleton",
+    "displayName": "Skeleton",
+    "region": 1,
+    "baseHp": 25,
+    "baseAttack": 5,
+    "baseDefense": 2,
+    "xpReward": 30,
+    "spriteId": "skeleton",
+    "spritePath": "entities/hostile/skeleton.png",
+    "placeholderColor": "#CC0000",
+    "abilities": ["bone_slash", "rattle"],
+    "lootTable": [
+      {"itemId": "bone", "weight": 40},
+      {"itemId": "iron_sword", "weight": 10},
+      {"itemId": "iron_ore", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "leather", "weight": 15}
+    ],
+    "description": "An animated skeleton warrior bound by dark magic"
+  },
+  {
+    "creatureId": "fire_imp",
+    "displayName": "Fire Imp",
+    "region": 1,
+    "baseHp": 20,
+    "baseAttack": 7,
+    "baseDefense": 1,
+    "xpReward": 35,
+    "spriteId": "fire_imp",
+    "spritePath": "entities/hostile/fire_imp.png",
+    "placeholderColor": "#FF4444",
+    "abilities": ["fireball", "flame_dash"],
+    "lootTable": [
+      {"itemId": "coal", "weight": 35},
+      {"itemId": "fire_essence", "weight": 25},
+      {"itemId": "health_potion", "weight": 20},
+      {"itemId": "mana_potion", "weight": 20}
+    ],
+    "description": "A small cackling demon wreathed in flickering flames"
+  },
+  {
+    "creatureId": "dark_spider",
+    "displayName": "Dark Spider",
+    "region": 1,
+    "baseHp": 18,
+    "baseAttack": 6,
+    "baseDefense": 1,
+    "xpReward": 25,
+    "spriteId": "dark_spider",
+    "spritePath": "entities/hostile/dark_spider.png",
+    "placeholderColor": "#880000",
+    "abilities": ["venom_bite", "web_snare"],
+    "lootTable": [
+      {"itemId": "spider_silk", "weight": 35},
+      {"itemId": "venom_sac", "weight": 25},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "health_potion", "weight": 20}
+    ],
+    "description": "A large spider that thrives in the pitch-black dungeon depths"
+  },
+  {
+    "creatureId": "zombie",
+    "displayName": "Zombie",
+    "region": 1,
+    "baseHp": 30,
+    "baseAttack": 4,
+    "baseDefense": 3,
+    "xpReward": 25,
+    "spriteId": "zombie",
+    "spritePath": "entities/hostile/zombie.png",
+    "placeholderColor": "#BB2222",
+    "abilities": ["slam", "infection"],
+    "lootTable": [
+      {"itemId": "rotten_flesh", "weight": 40},
+      {"itemId": "bone", "weight": 25},
+      {"itemId": "iron_ore", "weight": 15},
+      {"itemId": "health_potion", "weight": 10},
+      {"itemId": "leather", "weight": 10}
+    ],
+    "description": "A shambling undead corpse driven by insatiable hunger"
+  },
+  {
+    "creatureId": "blood_bat",
+    "displayName": "Blood Bat",
+    "region": 1,
+    "baseHp": 12,
+    "baseAttack": 5,
+    "baseDefense": 0,
+    "xpReward": 20,
+    "spriteId": "blood_bat",
+    "spritePath": "entities/hostile/blood_bat.png",
+    "placeholderColor": "#DD1111",
+    "abilities": ["drain_bite", "screech"],
+    "lootTable": [
+      {"itemId": "bat_wing", "weight": 40},
+      {"itemId": "blood_vial", "weight": 25},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "A crimson bat that feeds on the blood of adventurers"
+  },
+  {
+    "creatureId": "wraith",
+    "displayName": "Wraith",
+    "region": 1,
+    "baseHp": 22,
+    "baseAttack": 8,
+    "baseDefense": 0,
+    "xpReward": 40,
+    "spriteId": "wraith",
+    "spritePath": "entities/hostile/wraith.png",
+    "placeholderColor": "#990000",
+    "abilities": ["soul_drain", "phase_shift", "wail"],
+    "lootTable": [
+      {"itemId": "ectoplasm", "weight": 35},
+      {"itemId": "shadow_essence", "weight": 20},
+      {"itemId": "mana_potion", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "iron_sword", "weight": 10}
+    ],
+    "description": "A spectral being that drifts through dungeon walls"
+  },
+  {
+    "creatureId": "golem",
+    "displayName": "Golem",
+    "region": 1,
+    "baseHp": 40,
+    "baseAttack": 4,
+    "baseDefense": 6,
+    "xpReward": 45,
+    "spriteId": "golem",
+    "spritePath": "entities/hostile/golem.png",
+    "placeholderColor": "#993333",
+    "abilities": ["stone_fist", "ground_slam", "fortify"],
+    "lootTable": [
+      {"itemId": "stone_chunk", "weight": 35},
+      {"itemId": "iron_ore", "weight": 25},
+      {"itemId": "iron_shield", "weight": 10},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "coal", "weight": 15}
+    ],
+    "description": "A hulking construct of stone animated by ancient runes"
+  },
+  {
+    "creatureId": "demon",
+    "displayName": "Demon",
+    "region": 1,
+    "baseHp": 35,
+    "baseAttack": 9,
+    "baseDefense": 3,
+    "xpReward": 55,
+    "spriteId": "demon",
+    "spritePath": "entities/hostile/demon.png",
+    "placeholderColor": "#CC1100",
+    "abilities": ["hellfire", "dark_claw", "fear"],
+    "lootTable": [
+      {"itemId": "demon_horn", "weight": 30},
+      {"itemId": "fire_essence", "weight": 25},
+      {"itemId": "iron_sword", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 15}
+    ],
+    "description": "A fearsome demon summoned from the infernal depths"
+  },
+  {
+    "creatureId": "red_dragon_hatchling",
+    "displayName": "Red Dragon Hatchling",
+    "region": 1,
+    "baseHp": 50,
+    "baseAttack": 12,
+    "baseDefense": 5,
+    "xpReward": 80,
+    "spriteId": "red_dragon_hatchling",
+    "spritePath": "entities/hostile/red_dragon_hatchling.png",
+    "placeholderColor": "#FF0000",
+    "abilities": ["fire_breath", "tail_whip", "wing_gust", "roar"],
+    "lootTable": [
+      {"itemId": "dragon_scale", "weight": 25},
+      {"itemId": "fire_essence", "weight": 25},
+      {"itemId": "iron_sword", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 20}
+    ],
+    "description": "A young red dragon still learning to control its fiery power"
+  },
+
+  {
+    "creatureId": "lava_elemental",
+    "displayName": "Lava Elemental",
+    "region": 2,
+    "baseHp": 46,
+    "baseAttack": 10,
+    "baseDefense": 5,
+    "xpReward": 55,
+    "spriteId": "lava_elemental",
+    "spritePath": "entities/hostile/lava_elemental.png",
+    "placeholderColor": "#FF6600",
+    "abilities": ["magma_blast", "molten_armor", "eruption"],
+    "lootTable": [
+      {"itemId": "lava_core", "weight": 30},
+      {"itemId": "fire_essence", "weight": 25},
+      {"itemId": "iron_ore", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "coal", "weight": 10}
+    ],
+    "description": "A living mass of molten rock and searing heat"
+  },
+  {
+    "creatureId": "fire_salamander",
+    "displayName": "Fire Salamander",
+    "region": 2,
+    "baseHp": 33,
+    "baseAttack": 8,
+    "baseDefense": 3,
+    "xpReward": 42,
+    "spriteId": "fire_salamander",
+    "spritePath": "entities/hostile/fire_salamander.png",
+    "placeholderColor": "#EE5500",
+    "abilities": ["flame_tongue", "heat_wave"],
+    "lootTable": [
+      {"itemId": "salamander_scale", "weight": 35},
+      {"itemId": "fire_essence", "weight": 25},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "health_potion", "weight": 20}
+    ],
+    "description": "A giant lizard that bathes in volcanic pools"
+  },
+  {
+    "creatureId": "magma_golem",
+    "displayName": "Magma Golem",
+    "region": 2,
+    "baseHp": 52,
+    "baseAttack": 7,
+    "baseDefense": 8,
+    "xpReward": 60,
+    "spriteId": "magma_golem",
+    "spritePath": "entities/hostile/magma_golem.png",
+    "placeholderColor": "#CC4400",
+    "abilities": ["lava_fist", "ground_slam", "heat_shield"],
+    "lootTable": [
+      {"itemId": "stone_chunk", "weight": 30},
+      {"itemId": "lava_core", "weight": 20},
+      {"itemId": "iron_ore", "weight": 20},
+      {"itemId": "iron_shield", "weight": 15},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "A towering golem formed from cooling magma and volcanic rock"
+  },
+  {
+    "creatureId": "ash_wraith",
+    "displayName": "Ash Wraith",
+    "region": 2,
+    "baseHp": 29,
+    "baseAttack": 11,
+    "baseDefense": 1,
+    "xpReward": 50,
+    "spriteId": "ash_wraith",
+    "spritePath": "entities/hostile/ash_wraith.png",
+    "placeholderColor": "#DD5522",
+    "abilities": ["ash_cloud", "soul_burn", "phase_shift"],
+    "lootTable": [
+      {"itemId": "ectoplasm", "weight": 30},
+      {"itemId": "fire_essence", "weight": 25},
+      {"itemId": "shadow_essence", "weight": 20},
+      {"itemId": "mana_potion", "weight": 25}
+    ],
+    "description": "The scorched spirit of one consumed by volcanic fire"
+  },
+  {
+    "creatureId": "ember_wolf",
+    "displayName": "Ember Wolf",
+    "region": 2,
+    "baseHp": 35,
+    "baseAttack": 9,
+    "baseDefense": 3,
+    "xpReward": 45,
+    "spriteId": "ember_wolf",
+    "spritePath": "entities/hostile/ember_wolf.png",
+    "placeholderColor": "#FF7733",
+    "abilities": ["flame_bite", "howl", "pounce"],
+    "lootTable": [
+      {"itemId": "wolf_pelt", "weight": 35},
+      {"itemId": "fire_essence", "weight": 20},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "bone", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A fierce wolf with smoldering fur that prowls volcanic ridges"
+  },
+
+  {
+    "creatureId": "wild_boar",
+    "displayName": "Wild Boar",
+    "region": 3,
+    "baseHp": 40,
+    "baseAttack": 8,
+    "baseDefense": 4,
+    "xpReward": 40,
+    "spriteId": "wild_boar",
+    "spritePath": "entities/hostile/wild_boar.png",
+    "placeholderColor": "#AAAA00",
+    "abilities": ["charge", "gore", "stomp"],
+    "lootTable": [
+      {"itemId": "leather", "weight": 35},
+      {"itemId": "raw_meat", "weight": 30},
+      {"itemId": "bone", "weight": 15},
+      {"itemId": "health_potion", "weight": 20}
+    ],
+    "description": "A territorial boar with razor-sharp tusks"
+  },
+  {
+    "creatureId": "giant_bee",
+    "displayName": "Giant Bee",
+    "region": 3,
+    "baseHp": 22,
+    "baseAttack": 10,
+    "baseDefense": 2,
+    "xpReward": 38,
+    "spriteId": "giant_bee",
+    "spritePath": "entities/hostile/giant_bee.png",
+    "placeholderColor": "#CCCC00",
+    "abilities": ["sting", "buzz_rush", "pollen_cloud"],
+    "lootTable": [
+      {"itemId": "honey", "weight": 30},
+      {"itemId": "venom_sac", "weight": 25},
+      {"itemId": "wax", "weight": 25},
+      {"itemId": "health_potion", "weight": 20}
+    ],
+    "description": "An oversized bee fiercely defending its meadow territory"
+  },
+  {
+    "creatureId": "thorn_sprite",
+    "displayName": "Thorn Sprite",
+    "region": 3,
+    "baseHp": 25,
+    "baseAttack": 11,
+    "baseDefense": 2,
+    "xpReward": 45,
+    "spriteId": "thorn_sprite",
+    "spritePath": "entities/hostile/thorn_sprite.png",
+    "placeholderColor": "#88AA00",
+    "abilities": ["thorn_volley", "vine_whip", "nature_heal"],
+    "lootTable": [
+      {"itemId": "herb", "weight": 30},
+      {"itemId": "flower_petal", "weight": 25},
+      {"itemId": "mana_potion", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "spider_silk", "weight": 10}
+    ],
+    "description": "A mischievous fae creature armed with razor-sharp thorns"
+  },
+  {
+    "creatureId": "wind_serpent",
+    "displayName": "Wind Serpent",
+    "region": 3,
+    "baseHp": 30,
+    "baseAttack": 12,
+    "baseDefense": 2,
+    "xpReward": 50,
+    "spriteId": "wind_serpent",
+    "spritePath": "entities/hostile/wind_serpent.png",
+    "placeholderColor": "#BBBB22",
+    "abilities": ["gust_strike", "coil", "air_slash"],
+    "lootTable": [
+      {"itemId": "serpent_scale", "weight": 30},
+      {"itemId": "leather", "weight": 25},
+      {"itemId": "venom_sac", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 10}
+    ],
+    "description": "A swift serpent that rides the meadow winds"
+  },
+  {
+    "creatureId": "meadow_troll",
+    "displayName": "Meadow Troll",
+    "region": 3,
+    "baseHp": 55,
+    "baseAttack": 9,
+    "baseDefense": 6,
+    "xpReward": 58,
+    "spriteId": "meadow_troll",
+    "spritePath": "entities/hostile/meadow_troll.png",
+    "placeholderColor": "#99AA11",
+    "abilities": ["club_smash", "regenerate", "boulder_toss"],
+    "lootTable": [
+      {"itemId": "troll_hide", "weight": 30},
+      {"itemId": "stone_chunk", "weight": 25},
+      {"itemId": "bone", "weight": 20},
+      {"itemId": "iron_ore", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A lumbering troll that hides among the tall meadow grasses"
+  },
+
+  {
+    "creatureId": "dire_wolf",
+    "displayName": "Dire Wolf",
+    "region": 4,
+    "baseHp": 45,
+    "baseAttack": 12,
+    "baseDefense": 4,
+    "xpReward": 52,
+    "spriteId": "dire_wolf",
+    "spritePath": "entities/hostile/dire_wolf.png",
+    "placeholderColor": "#228B22",
+    "abilities": ["savage_bite", "howl", "pack_rush"],
+    "lootTable": [
+      {"itemId": "wolf_pelt", "weight": 35},
+      {"itemId": "raw_meat", "weight": 25},
+      {"itemId": "bone", "weight": 20},
+      {"itemId": "leather", "weight": 10},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A massive wolf with glowing eyes that hunts in forest packs"
+  },
+  {
+    "creatureId": "tree_ent",
+    "displayName": "Tree Ent",
+    "region": 4,
+    "baseHp": 65,
+    "baseAttack": 10,
+    "baseDefense": 8,
+    "xpReward": 65,
+    "spriteId": "tree_ent",
+    "spritePath": "entities/hostile/tree_ent.png",
+    "placeholderColor": "#006600",
+    "abilities": ["branch_slam", "root_snare", "bark_shield"],
+    "lootTable": [
+      {"itemId": "wood", "weight": 35},
+      {"itemId": "herb", "weight": 25},
+      {"itemId": "stone_chunk", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 10}
+    ],
+    "description": "An ancient tree awakened to defend the deep forest"
+  },
+  {
+    "creatureId": "forest_spider",
+    "displayName": "Forest Spider",
+    "region": 4,
+    "baseHp": 35,
+    "baseAttack": 11,
+    "baseDefense": 3,
+    "xpReward": 48,
+    "spriteId": "forest_spider",
+    "spritePath": "entities/hostile/forest_spider.png",
+    "placeholderColor": "#337733",
+    "abilities": ["venom_bite", "web_trap", "ambush"],
+    "lootTable": [
+      {"itemId": "spider_silk", "weight": 35},
+      {"itemId": "venom_sac", "weight": 25},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "health_potion", "weight": 20}
+    ],
+    "description": "A cunning spider that weaves deadly traps among the trees"
+  },
+  {
+    "creatureId": "goblin",
+    "displayName": "Goblin",
+    "region": 4,
+    "baseHp": 30,
+    "baseAttack": 10,
+    "baseDefense": 4,
+    "xpReward": 45,
+    "spriteId": "goblin",
+    "spritePath": "entities/hostile/goblin.png",
+    "placeholderColor": "#118811",
+    "abilities": ["stab", "dirty_trick", "flee"],
+    "lootTable": [
+      {"itemId": "iron_sword", "weight": 20},
+      {"itemId": "leather", "weight": 25},
+      {"itemId": "coal", "weight": 20},
+      {"itemId": "health_potion", "weight": 20},
+      {"itemId": "iron_ore", "weight": 15}
+    ],
+    "description": "A sneaky green-skinned trickster that ambushes travelers"
+  },
+  {
+    "creatureId": "moss_golem",
+    "displayName": "Moss Golem",
+    "region": 4,
+    "baseHp": 60,
+    "baseAttack": 8,
+    "baseDefense": 9,
+    "xpReward": 60,
+    "spriteId": "moss_golem",
+    "spritePath": "entities/hostile/moss_golem.png",
+    "placeholderColor": "#2E8B2E",
+    "abilities": ["stone_fist", "moss_heal", "spore_cloud"],
+    "lootTable": [
+      {"itemId": "stone_chunk", "weight": 30},
+      {"itemId": "herb", "weight": 25},
+      {"itemId": "wood", "weight": 20},
+      {"itemId": "iron_ore", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A stone construct overgrown with living moss and fungi"
+  },
+
+  {
+    "creatureId": "sea_serpent",
+    "displayName": "Sea Serpent",
+    "region": 5,
+    "baseHp": 55,
+    "baseAttack": 15,
+    "baseDefense": 5,
+    "xpReward": 70,
+    "spriteId": "sea_serpent",
+    "spritePath": "entities/hostile/sea_serpent.png",
+    "placeholderColor": "#0066CC",
+    "abilities": ["tidal_strike", "constrict", "water_jet"],
+    "lootTable": [
+      {"itemId": "serpent_scale", "weight": 30},
+      {"itemId": "water_essence", "weight": 25},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 10}
+    ],
+    "description": "A massive serpent that rules the coastal shallows"
+  },
+  {
+    "creatureId": "crab_warrior",
+    "displayName": "Crab Warrior",
+    "region": 5,
+    "baseHp": 50,
+    "baseAttack": 12,
+    "baseDefense": 10,
+    "xpReward": 65,
+    "spriteId": "crab_warrior",
+    "spritePath": "entities/hostile/crab_warrior.png",
+    "placeholderColor": "#004488",
+    "abilities": ["claw_crush", "shell_guard", "bubble_spray"],
+    "lootTable": [
+      {"itemId": "crab_shell", "weight": 35},
+      {"itemId": "raw_meat", "weight": 25},
+      {"itemId": "iron_shield", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "water_essence", "weight": 10}
+    ],
+    "description": "An armored crustacean with crushing claws the size of shields"
+  },
+  {
+    "creatureId": "drowned_zombie",
+    "displayName": "Drowned Zombie",
+    "region": 5,
+    "baseHp": 42,
+    "baseAttack": 11,
+    "baseDefense": 5,
+    "xpReward": 55,
+    "spriteId": "drowned_zombie",
+    "spritePath": "entities/hostile/drowned_zombie.png",
+    "placeholderColor": "#225588",
+    "abilities": ["waterlogged_slam", "infection", "drag_down"],
+    "lootTable": [
+      {"itemId": "rotten_flesh", "weight": 35},
+      {"itemId": "bone", "weight": 25},
+      {"itemId": "water_essence", "weight": 15},
+      {"itemId": "iron_ore", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A bloated undead sailor risen from the ocean depths"
+  },
+  {
+    "creatureId": "siren",
+    "displayName": "Siren",
+    "region": 5,
+    "baseHp": 38,
+    "baseAttack": 16,
+    "baseDefense": 3,
+    "xpReward": 75,
+    "spriteId": "siren",
+    "spritePath": "entities/hostile/siren.png",
+    "placeholderColor": "#3377AA",
+    "abilities": ["enchanting_song", "water_bolt", "charm"],
+    "lootTable": [
+      {"itemId": "water_essence", "weight": 30},
+      {"itemId": "mana_potion", "weight": 25},
+      {"itemId": "flower_petal", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "iron_sword", "weight": 10}
+    ],
+    "description": "A beautiful and deadly creature whose voice lures sailors to their doom"
+  },
+  {
+    "creatureId": "kraken_spawn",
+    "displayName": "Kraken Spawn",
+    "region": 5,
+    "baseHp": 70,
+    "baseAttack": 14,
+    "baseDefense": 7,
+    "xpReward": 85,
+    "spriteId": "kraken_spawn",
+    "spritePath": "entities/hostile/kraken_spawn.png",
+    "placeholderColor": "#003366",
+    "abilities": ["tentacle_lash", "ink_cloud", "drag_down", "crush"],
+    "lootTable": [
+      {"itemId": "tentacle", "weight": 30},
+      {"itemId": "water_essence", "weight": 25},
+      {"itemId": "leather", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 15}
+    ],
+    "description": "A juvenile offspring of the legendary Kraken"
+  },
+
+  {
+    "creatureId": "knight_ghost",
+    "displayName": "Knight Ghost",
+    "region": 6,
+    "baseHp": 52,
+    "baseAttack": 16,
+    "baseDefense": 6,
+    "xpReward": 78,
+    "spriteId": "knight_ghost",
+    "spritePath": "entities/hostile/knight_ghost.png",
+    "placeholderColor": "#FF69B4",
+    "abilities": ["spectral_slash", "phase_shift", "ghostly_charge"],
+    "lootTable": [
+      {"itemId": "ectoplasm", "weight": 30},
+      {"itemId": "iron_sword", "weight": 20},
+      {"itemId": "iron_shield", "weight": 15},
+      {"itemId": "shadow_essence", "weight": 20},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "The restless spirit of a fallen knight still guarding the castle halls"
+  },
+  {
+    "creatureId": "gargoyle",
+    "displayName": "Gargoyle",
+    "region": 6,
+    "baseHp": 65,
+    "baseAttack": 13,
+    "baseDefense": 10,
+    "xpReward": 82,
+    "spriteId": "gargoyle",
+    "spritePath": "entities/hostile/gargoyle.png",
+    "placeholderColor": "#CC5599",
+    "abilities": ["claw_swipe", "stone_skin", "dive_bomb"],
+    "lootTable": [
+      {"itemId": "stone_chunk", "weight": 35},
+      {"itemId": "iron_ore", "weight": 20},
+      {"itemId": "shadow_essence", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 15}
+    ],
+    "description": "A stone guardian that springs to life when intruders approach"
+  },
+  {
+    "creatureId": "royal_guard",
+    "displayName": "Royal Guard",
+    "region": 6,
+    "baseHp": 60,
+    "baseAttack": 15,
+    "baseDefense": 9,
+    "xpReward": 80,
+    "spriteId": "royal_guard",
+    "spritePath": "entities/hostile/royal_guard.png",
+    "placeholderColor": "#DD6699",
+    "abilities": ["shield_bash", "precise_strike", "rally"],
+    "lootTable": [
+      {"itemId": "iron_sword", "weight": 25},
+      {"itemId": "iron_shield", "weight": 20},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "iron_ore", "weight": 20},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "An elite castle guard sworn to protect the throne at all costs"
+  },
+  {
+    "creatureId": "witch",
+    "displayName": "Witch",
+    "region": 6,
+    "baseHp": 42,
+    "baseAttack": 19,
+    "baseDefense": 4,
+    "xpReward": 88,
+    "spriteId": "witch",
+    "spritePath": "entities/hostile/witch.png",
+    "placeholderColor": "#BB4488",
+    "abilities": ["hex", "shadow_bolt", "potion_toss", "curse"],
+    "lootTable": [
+      {"itemId": "mana_potion", "weight": 30},
+      {"itemId": "health_potion", "weight": 20},
+      {"itemId": "shadow_essence", "weight": 20},
+      {"itemId": "herb", "weight": 15},
+      {"itemId": "iron_sword", "weight": 15}
+    ],
+    "description": "A sinister spellcaster who draws power from forbidden rituals"
+  },
+  {
+    "creatureId": "shadow_assassin",
+    "displayName": "Shadow Assassin",
+    "region": 6,
+    "baseHp": 45,
+    "baseAttack": 20,
+    "baseDefense": 3,
+    "xpReward": 90,
+    "spriteId": "shadow_assassin",
+    "spritePath": "entities/hostile/shadow_assassin.png",
+    "placeholderColor": "#AA3377",
+    "abilities": ["backstab", "vanish", "poison_blade", "shadow_step"],
+    "lootTable": [
+      {"itemId": "shadow_essence", "weight": 30},
+      {"itemId": "iron_sword", "weight": 20},
+      {"itemId": "leather", "weight": 20},
+      {"itemId": "venom_sac", "weight": 15},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "A deadly killer who strikes from the castle shadows without warning"
+  },
+
+  {
+    "creatureId": "ice_golem",
+    "displayName": "Ice Golem",
+    "region": 7,
+    "baseHp": 80,
+    "baseAttack": 14,
+    "baseDefense": 12,
+    "xpReward": 95,
+    "spriteId": "ice_golem",
+    "spritePath": "entities/hostile/ice_golem.png",
+    "placeholderColor": "#88CCEE",
+    "abilities": ["frost_slam", "ice_shield", "glacial_stomp"],
+    "lootTable": [
+      {"itemId": "ice_crystal", "weight": 30},
+      {"itemId": "stone_chunk", "weight": 25},
+      {"itemId": "water_essence", "weight": 20},
+      {"itemId": "iron_ore", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A towering construct of solid ice and frozen magic"
+  },
+  {
+    "creatureId": "frost_wolf",
+    "displayName": "Frost Wolf",
+    "region": 7,
+    "baseHp": 58,
+    "baseAttack": 18,
+    "baseDefense": 7,
+    "xpReward": 85,
+    "spriteId": "frost_wolf",
+    "spritePath": "entities/hostile/frost_wolf.png",
+    "placeholderColor": "#AADDFF",
+    "abilities": ["frost_bite", "howl", "blizzard_rush"],
+    "lootTable": [
+      {"itemId": "wolf_pelt", "weight": 35},
+      {"itemId": "ice_crystal", "weight": 25},
+      {"itemId": "raw_meat", "weight": 15},
+      {"itemId": "bone", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A white-furred predator with breath that freezes on contact"
+  },
+  {
+    "creatureId": "snow_wraith",
+    "displayName": "Snow Wraith",
+    "region": 7,
+    "baseHp": 48,
+    "baseAttack": 21,
+    "baseDefense": 3,
+    "xpReward": 92,
+    "spriteId": "snow_wraith",
+    "spritePath": "entities/hostile/snow_wraith.png",
+    "placeholderColor": "#99CCDD",
+    "abilities": ["frost_drain", "blizzard", "phase_shift"],
+    "lootTable": [
+      {"itemId": "ectoplasm", "weight": 30},
+      {"itemId": "ice_crystal", "weight": 25},
+      {"itemId": "shadow_essence", "weight": 20},
+      {"itemId": "mana_potion", "weight": 15},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A frozen specter that howls through the ice caverns"
+  },
+  {
+    "creatureId": "crystal_spider",
+    "displayName": "Crystal Spider",
+    "region": 7,
+    "baseHp": 50,
+    "baseAttack": 17,
+    "baseDefense": 8,
+    "xpReward": 88,
+    "spriteId": "crystal_spider",
+    "spritePath": "entities/hostile/crystal_spider.png",
+    "placeholderColor": "#77BBDD",
+    "abilities": ["ice_fang", "crystal_web", "frost_spray"],
+    "lootTable": [
+      {"itemId": "spider_silk", "weight": 30},
+      {"itemId": "ice_crystal", "weight": 25},
+      {"itemId": "venom_sac", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 10}
+    ],
+    "description": "A spider with a crystalline exoskeleton that refracts light into blinding patterns"
+  },
+  {
+    "creatureId": "yeti",
+    "displayName": "Yeti",
+    "region": 7,
+    "baseHp": 85,
+    "baseAttack": 19,
+    "baseDefense": 10,
+    "xpReward": 100,
+    "spriteId": "yeti",
+    "spritePath": "entities/hostile/yeti.png",
+    "placeholderColor": "#BBDDEE",
+    "abilities": ["crushing_blow", "frost_roar", "avalanche", "ice_armor"],
+    "lootTable": [
+      {"itemId": "ice_crystal", "weight": 25},
+      {"itemId": "leather", "weight": 25},
+      {"itemId": "bone", "weight": 20},
+      {"itemId": "raw_meat", "weight": 15},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "A legendary beast of immense strength that rules the frozen peaks"
+  },
+
+  {
+    "creatureId": "void_walker",
+    "displayName": "Void Walker",
+    "region": 8,
+    "baseHp": 70,
+    "baseAttack": 22,
+    "baseDefense": 8,
+    "xpReward": 110,
+    "spriteId": "void_walker",
+    "spritePath": "entities/hostile/void_walker.png",
+    "placeholderColor": "#440066",
+    "abilities": ["void_strike", "dimensional_shift", "entropy"],
+    "lootTable": [
+      {"itemId": "void_essence", "weight": 30},
+      {"itemId": "shadow_essence", "weight": 25},
+      {"itemId": "mana_potion", "weight": 20},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "iron_sword", "weight": 10}
+    ],
+    "description": "An entity from beyond reality that phases between dimensions"
+  },
+  {
+    "creatureId": "shadow_beast",
+    "displayName": "Shadow Beast",
+    "region": 8,
+    "baseHp": 75,
+    "baseAttack": 24,
+    "baseDefense": 7,
+    "xpReward": 115,
+    "spriteId": "shadow_beast",
+    "spritePath": "entities/hostile/shadow_beast.png",
+    "placeholderColor": "#330055",
+    "abilities": ["shadow_claw", "dark_howl", "fear", "consume"],
+    "lootTable": [
+      {"itemId": "shadow_essence", "weight": 35},
+      {"itemId": "void_essence", "weight": 20},
+      {"itemId": "leather", "weight": 15},
+      {"itemId": "health_potion", "weight": 15},
+      {"itemId": "mana_potion", "weight": 15}
+    ],
+    "description": "A formless predator made of living darkness"
+  },
+  {
+    "creatureId": "chaos_elemental",
+    "displayName": "Chaos Elemental",
+    "region": 8,
+    "baseHp": 65,
+    "baseAttack": 26,
+    "baseDefense": 6,
+    "xpReward": 120,
+    "spriteId": "chaos_elemental",
+    "spritePath": "entities/hostile/chaos_elemental.png",
+    "placeholderColor": "#550088",
+    "abilities": ["chaos_bolt", "reality_warp", "unstable_burst"],
+    "lootTable": [
+      {"itemId": "void_essence", "weight": 30},
+      {"itemId": "fire_essence", "weight": 20},
+      {"itemId": "water_essence", "weight": 15},
+      {"itemId": "mana_potion", "weight": 20},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "A swirling mass of unstable energy from the void between worlds"
+  },
+  {
+    "creatureId": "nightmare",
+    "displayName": "Nightmare",
+    "region": 8,
+    "baseHp": 60,
+    "baseAttack": 25,
+    "baseDefense": 5,
+    "xpReward": 118,
+    "spriteId": "nightmare",
+    "spritePath": "entities/hostile/nightmare.png",
+    "placeholderColor": "#220044",
+    "abilities": ["terror", "mind_rend", "sleep", "dream_eater"],
+    "lootTable": [
+      {"itemId": "shadow_essence", "weight": 30},
+      {"itemId": "ectoplasm", "weight": 20},
+      {"itemId": "void_essence", "weight": 20},
+      {"itemId": "mana_potion", "weight": 20},
+      {"itemId": "health_potion", "weight": 10}
+    ],
+    "description": "A manifestation of pure dread that feeds on the fears of the living"
+  },
+  {
+    "creatureId": "void_dragon",
+    "displayName": "Void Dragon",
+    "region": 8,
+    "baseHp": 100,
+    "baseAttack": 28,
+    "baseDefense": 12,
+    "xpReward": 150,
+    "spriteId": "void_dragon",
+    "spritePath": "entities/hostile/void_dragon.png",
+    "placeholderColor": "#2A0044",
+    "abilities": ["void_breath", "tail_whip", "dimensional_roar", "annihilate", "dark_wing"],
+    "lootTable": [
+      {"itemId": "dragon_scale", "weight": 25},
+      {"itemId": "void_essence", "weight": 25},
+      {"itemId": "shadow_essence", "weight": 20},
+      {"itemId": "mana_potion", "weight": 15},
+      {"itemId": "health_potion", "weight": 15}
+    ],
+    "description": "An ancient dragon corrupted by the void, the most fearsome creature in existence"
+  }
+]

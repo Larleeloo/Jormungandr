@@ -1,4 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Jormungandr</string>
+    <string name="app_name">Jörmungandr</string>
+    <string name="title_new_game">New Game</string>
+    <string name="title_continue">Continue</string>
+    <string name="btn_inventory">Inv</string>
+    <string name="btn_character">Char</string>
+    <string name="btn_map">Map</string>
+    <string name="btn_room">Room</string>
+    <string name="btn_shop">Shop</string>
+    <string name="btn_storage">Storage</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_equip">Equip</string>
+    <string name="btn_use">Use</string>
+    <string name="btn_drop">Drop</string>
+    <string name="btn_flee">Flee</string>
+    <string name="btn_buy">Buy</string>
+    <string name="btn_post">Post</string>
+    <string name="label_access_code">Access Code</string>
+    <string name="label_player_name">Player Name</string>
+    <string name="label_level">Level %1$d</string>
+    <string name="label_gold">Gold: %1$d</string>
+    <string name="label_hp">HP</string>
+    <string name="label_mana">Mana</string>
+    <string name="label_stamina">Stamina</string>
+    <string name="msg_chest_empty">Chest is empty.</string>
+    <string name="msg_item_added">%1$s added to inventory.</string>
+    <string name="msg_inventory_full">Inventory is full!</string>
+    <string name="msg_combat_victory">Victory! Gained %1$d XP.</string>
+    <string name="msg_combat_defeat">Defeated! Returning to hub…</string>
+    <string name="msg_level_up">Level Up! You are now level %1$d.</string>
+    <string name="msg_trap_damage">A trap deals %1$d damage!</string>
+    <string name="msg_waypoint_discovered">Waypoint discovered!</string>
+    <string name="msg_save_success">Game saved.</string>
+    <string name="msg_save_failed">Save failed. Try again.</string>
 </resources>
