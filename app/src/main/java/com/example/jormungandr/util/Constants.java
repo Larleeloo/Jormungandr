@@ -81,5 +81,5 @@ public final class Constants {
     public static final int WAYPOINT_ROOM_ID = 500;
 
     // World seed for deterministic generation
-    public static final long WORLD_SEED = 0x4A6F726D756E4C;
+    public static final long WORLD_SEED = 0x4A6F726D756E4CL;
 }
