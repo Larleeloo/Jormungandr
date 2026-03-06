@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1A0A2E"
+    android:padding="8dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Inventory"
+        android:textColor="#FFD700"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Equipment panel -->
+    <LinearLayout
+        android:id="@+id/equipment_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="4dp"
+        android:background="@drawable/panel_background"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/equipment_main_hand"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:gravity="center"
+            android:text="Main"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/equipment_off_hand"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:gravity="center"
+            android:text="Off"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/equipment_head"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:gravity="center"
+            android:text="Head"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/equipment_chest"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:gravity="center"
+            android:text="Chest"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/equipment_legs"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:gravity="center"
+            android:text="Legs"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/equipment_feet"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:gravity="center"
+            android:text="Feet"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_margin="2dp" />
+    </LinearLayout>
+
+    <!-- Gold display -->
+    <TextView
+        android:id="@+id/gold_display"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gold: 0"
+        android:textColor="#FFD700"
+        android:textSize="14sp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Inventory grid -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/inventory_grid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Item detail panel -->
+    <LinearLayout
+        android:id="@+id/item_detail_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:background="@drawable/panel_background"
+        android:visibility="gone"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/item_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFD700"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/item_description"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/item_stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp" />
+
+        <LinearLayout
+            android:id="@+id/item_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btn_equip"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="Equip"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#4B0082"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_use"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="Use"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#228B22"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_drop"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="Drop"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#8B0000" />
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

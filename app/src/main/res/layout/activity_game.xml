@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/game_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A0A2E">
+
+    <!-- Player HUD bar at top -->
+    <LinearLayout
+        android:id="@+id/hud_bar"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="#0D0520"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/hud_hp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="HP: 20/20"
+            android:textColor="#FF4444"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/hud_mana"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MP: 10/10"
+            android:textColor="#4488FF"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/hud_stamina"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="SP: 10/10"
+            android:textColor="#44FF44"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/hud_level"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Lv.1"
+            android:textColor="#FFD700"
+            android:textSize="13sp"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- Main content area for fragments -->
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/hud_bar"
+        app:layout_constraintBottom_toTopOf="@id/bottom_bar" />
+
+    <!-- Bottom navigation bar -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/bottom_bar_background"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <Button
+            android:id="@+id/btn_inventory"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Inv"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bottom_bar_button"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_character"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Char"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bottom_bar_button"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_map"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Map"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bottom_bar_button"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_room"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Room"
+            android:textSize="12sp"
+            android:textColor="#FFD700"
+            android:background="@drawable/bottom_bar_button" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

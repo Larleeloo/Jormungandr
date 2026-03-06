@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A0A2E"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/player_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Player Name"
+            android:textColor="#FFD700"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/player_level"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Level 1"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:layout_marginTop="4dp" />
+
+        <!-- XP Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="XP: "
+                android:textColor="#AAAAAA"
+                android:textSize="14sp" />
+
+            <ProgressBar
+                android:id="@+id/xp_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="16dp"
+                android:layout_weight="1"
+                android:progressTint="#FFD700"
+                android:progressBackgroundTint="#333333" />
+
+            <TextView
+                android:id="@+id/xp_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0/100"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Vitals -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginTop="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vitals"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stat_hp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HP: 20/20"
+                android:textColor="#FF4444"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/stat_mana"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mana: 10/10"
+                android:textColor="#4488FF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/stat_stamina"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Stamina: 10/10"
+                android:textColor="#44FF44"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Available points -->
+        <TextView
+            android:id="@+id/available_points"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Available Points: 0"
+            android:textColor="#FFD700"
+            android:textSize="16sp"
+            android:layout_marginTop="16dp" />
+
+        <!-- Stats -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginTop="8dp">
+
+            <include layout="@layout/stat_row"
+                android:id="@+id/stat_strength" />
+            <include layout="@layout/stat_row"
+                android:id="@+id/stat_constitution" />
+            <include layout="@layout/stat_row"
+                android:id="@+id/stat_intelligence" />
+            <include layout="@layout/stat_row"
+                android:id="@+id/stat_wisdom" />
+            <include layout="@layout/stat_row"
+                android:id="@+id/stat_charisma" />
+            <include layout="@layout/stat_row"
+                android:id="@+id/stat_dexterity" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

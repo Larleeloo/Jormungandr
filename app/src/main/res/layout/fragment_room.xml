@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.example.jormungandr.view.RoomCanvasView
+        android:id="@+id/room_canvas"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Overlay for interaction messages -->
+    <TextView
+        android:id="@+id/room_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:gravity="center"
+        android:padding="12dp"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:background="#AA000000"
+        android:visibility="gone" />
+
+</FrameLayout>
