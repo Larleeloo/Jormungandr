@@ -14,6 +14,22 @@ android {
         versionName "1.0"
     }
 
+    signingConfigs {
+        release {
+            storeFile file('../jormungandr-release.keystore')
+            storePassword 'jormungandr123'
+            keyAlias 'jormungandr'
+            keyPassword 'jormungandr123'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
