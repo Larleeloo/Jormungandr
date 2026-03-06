@@ -121,13 +121,13 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void updateBottomBar(String activeTag) {
-        btnInventory.setTextColor(getColor("inventory".equals(activeTag) ? R.color.gold : R.color.white));
-        btnCharacter.setTextColor(getColor("character".equals(activeTag) ? R.color.gold : R.color.white));
-        btnMap.setTextColor(getColor("map".equals(activeTag) ? R.color.gold : R.color.white));
-        btnRoom.setTextColor(getColor("room".equals(activeTag) ? R.color.gold : R.color.white));
+        btnInventory.setTextColor(resolveColor("inventory".equals(activeTag) ? R.color.gold : R.color.white));
+        btnCharacter.setTextColor(resolveColor("character".equals(activeTag) ? R.color.gold : R.color.white));
+        btnMap.setTextColor(resolveColor("map".equals(activeTag) ? R.color.gold : R.color.white));
+        btnRoom.setTextColor(resolveColor("room".equals(activeTag) ? R.color.gold : R.color.white));
     }
 
-    private int getColor(int resId) {
+    private int resolveColor(int resId) {
         return getResources().getColor(resId, getTheme());
     }
 
