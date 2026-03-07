@@ -50,10 +50,10 @@ public final class Constants {
     public static final int HUB_REGION = 0;
     public static final String HUB_ROOM_ID = "r0_00000";
 
-    // Cloud sync - configure via BuildConfig or remote config before enabling
+    // Cloud sync - set APPS_SCRIPT_URL after deploying your Apps Script
     public static final String APPS_SCRIPT_URL = "";
-    public static final String ROOM_FOLDER_ID = "";
-    public static final String PLAYER_FOLDER_ID = "";
+    public static final String ROOM_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
+    public static final String PLAYER_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
 
     // Access codes (25 initial testing codes)
     public static final int MAX_ACCESS_CODES = 25;
