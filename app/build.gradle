@@ -45,9 +45,9 @@ android {
         viewBinding true
     }
 
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "jormungandr-${variant.versionName}-${variant.buildType.name}.apk"
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach {
+            outputFileName = "jormungandr.apk"
         }
     }
 }
