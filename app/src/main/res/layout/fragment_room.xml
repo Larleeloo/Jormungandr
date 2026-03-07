@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.example.jormungandr.view.RoomCanvasView
+    <com.larleeloo.jormungandr.view.RoomCanvasView
         android:id="@+id/room_canvas"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

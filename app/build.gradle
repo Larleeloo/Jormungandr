@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.jormungandr'
+    namespace 'com.larleeloo.jormungandr'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.example.jormungandr"
+        applicationId "com.larleeloo.jormungandr"
         minSdk 24
         targetSdk 35
         versionCode 1
@@ -16,16 +16,22 @@ android {
 
     signingConfigs {
         release {
-            storeFile file('../jormungandr-release.keystore')
-            storePassword 'jormungandr123'
-            keyAlias 'jormungandr'
-            keyPassword 'jormungandr123'
+            def keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                def keystoreProperties = new Properties()
+                keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }
