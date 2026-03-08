@@ -45,23 +45,34 @@ public class CharacterFragment extends Fragment {
         xpBar = view.findViewById(R.id.xp_bar);
         xpText = view.findViewById(R.id.xp_text);
 
-        setupStatRow(view.findViewById(R.id.stat_strength), "Strength", "strength");
-        setupStatRow(view.findViewById(R.id.stat_constitution), "Constitution", "constitution");
-        setupStatRow(view.findViewById(R.id.stat_intelligence), "Intelligence", "intelligence");
-        setupStatRow(view.findViewById(R.id.stat_wisdom), "Wisdom", "wisdom");
-        setupStatRow(view.findViewById(R.id.stat_charisma), "Charisma", "charisma");
-        setupStatRow(view.findViewById(R.id.stat_dexterity), "Dexterity", "dexterity");
+        setupStatRow(view.findViewById(R.id.stat_strength), "Strength", "strength",
+                "+2 inventory slots per point. Increases melee damage.");
+        setupStatRow(view.findViewById(R.id.stat_constitution), "Constitution", "constitution",
+                "Increases max HP. Improves resistance to poison and traps.");
+        setupStatRow(view.findViewById(R.id.stat_intelligence), "Intelligence", "intelligence",
+                "Increases max Mana. Boosts spell and scroll effectiveness.");
+        setupStatRow(view.findViewById(R.id.stat_wisdom), "Wisdom", "wisdom",
+                "8% trap detection per point. Reveals hidden objects.");
+        setupStatRow(view.findViewById(R.id.stat_charisma), "Charisma", "charisma",
+                "Better shop prices. Improves note visibility to others.");
+        setupStatRow(view.findViewById(R.id.stat_dexterity), "Dexterity", "dexterity",
+                "Increases dodge chance. Boosts ranged damage and flee success.");
 
         refreshDisplay();
     }
 
-    private void setupStatRow(View row, String label, String statKey) {
+    private void setupStatRow(View row, String label, String statKey, String description) {
         if (row == null) return;
         TextView labelView = row.findViewById(R.id.stat_label);
         TextView valueView = row.findViewById(R.id.stat_value);
+        TextView descView = row.findViewById(R.id.stat_desc);
         Button plusBtn = row.findViewById(R.id.stat_plus);
 
         if (labelView != null) labelView.setText(label);
+        if (descView != null) {
+            descView.setText(description);
+            descView.setVisibility(View.VISIBLE);
+        }
 
         plusBtn.setOnClickListener(v -> {
             GameRepository repo = GameRepository.getInstance(requireContext());

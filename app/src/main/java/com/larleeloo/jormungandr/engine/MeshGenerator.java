@@ -79,8 +79,16 @@ public class MeshGenerator {
             }
             assigned[dirIdx] = true;
 
-            int target = computeForwardTarget(region, roomNumber, zone, rng);
-            doors.put(forwardDirs[dirIdx], RoomIdHelper.makeRoomId(region, target));
+            // Check for cross-region door (zone 5 only, 5% chance)
+            int crossRegion = getCrossRegionTarget(region, zone, rng);
+            if (crossRegion > 0) {
+                // Link to zone 1 of adjacent region
+                int targetRoom = rng.nextIntRange(0, getZoneEnd(1));
+                doors.put(forwardDirs[dirIdx], RoomIdHelper.makeRoomId(crossRegion, targetRoom));
+            } else {
+                int target = computeForwardTarget(region, roomNumber, zone, rng);
+                doors.put(forwardDirs[dirIdx], RoomIdHelper.makeRoomId(region, target));
+            }
         }
 
         return doors;
@@ -137,6 +145,25 @@ public class MeshGenerator {
         }
 
         return rng.nextIntRange(nextZoneStart, nextZoneEnd);
+    }
+
+    /**
+     * Check if a forward door should lead to an adjacent region.
+     * At zone 5, there is a 5% chance of a cross-region door.
+     * Returns -1 if no cross-region link, or the target region number.
+     */
+    static int getCrossRegionTarget(int region, int zone, SeededRandom rng) {
+        if (zone < 5 || region == 0) return -1;
+        if (rng.nextDouble() < 0.05) {
+            // Adjacent region: region wraps around 1-8
+            boolean goHigher = rng.nextBoolean();
+            if (goHigher) {
+                return region >= Constants.NUM_REGIONS ? 1 : region + 1;
+            } else {
+                return region <= 1 ? Constants.NUM_REGIONS : region - 1;
+            }
+        }
+        return -1;
     }
 
     private static int getZoneStart(int zone) {

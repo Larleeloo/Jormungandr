@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.larleeloo.jormungandr.R;
+import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.fragment.CharacterFragment;
 import com.larleeloo.jormungandr.fragment.CombatFragment;
@@ -20,6 +21,8 @@ import com.larleeloo.jormungandr.fragment.InventoryFragment;
 import com.larleeloo.jormungandr.fragment.MapFragment;
 import com.larleeloo.jormungandr.fragment.RoomFragment;
 import com.larleeloo.jormungandr.model.Player;
+import com.larleeloo.jormungandr.model.Room;
+import com.larleeloo.jormungandr.util.Constants;
 
 public class GameActivity extends AppCompatActivity {
 
@@ -27,6 +30,7 @@ public class GameActivity extends AppCompatActivity {
     private Button btnInventory, btnCharacter, btnMap, btnRoom;
     private Fragment currentFragment;
     private String currentFragmentTag;
+    private CloudSyncManager cloudSyncManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +60,14 @@ public class GameActivity extends AppCompatActivity {
         btnMap.setOnClickListener(v -> showFragment(new MapFragment(), "map"));
         btnRoom.setOnClickListener(v -> showFragment(new RoomFragment(), "room"));
 
+        // Cloud sync setup
+        cloudSyncManager = new CloudSyncManager();
+        if (Constants.APPS_SCRIPT_URL.isEmpty()) {
+            android.widget.Toast.makeText(this,
+                    "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java",
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+
         // Load the initial room
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
@@ -81,8 +93,20 @@ public class GameActivity extends AppCompatActivity {
 
     public void navigateToRoom(String roomId) {
         GameRepository repo = GameRepository.getInstance(this);
-        repo.navigateToRoom(roomId);
+        Room room = repo.navigateToRoom(roomId);
         updateHud();
+
+        // Trigger cloud sync at save points (hub and waypoints)
+        Player player = repo.getCurrentPlayer();
+        if (player != null && cloudSyncManager != null) {
+            boolean isHub = roomId != null && roomId.startsWith("r0_");
+            boolean isWaypoint = room != null && room.isWaypoint();
+            if (isHub || isWaypoint) {
+                cloudSyncManager.fullSync(player, room, (success, message) ->
+                        android.util.Log.d("CloudSync", "Auto-sync: " + message));
+            }
+        }
+
         showFragment(new RoomFragment(), "room");
     }
 
@@ -138,6 +162,14 @@ public class GameActivity extends AppCompatActivity {
         GameRepository repo = GameRepository.getInstance(this);
         repo.savePlayer();
         repo.saveCurrentRoom();
+
+        // Also trigger cloud sync on pause
+        Player player = repo.getCurrentPlayer();
+        Room room = repo.getCurrentRoom();
+        if (player != null && cloudSyncManager != null) {
+            cloudSyncManager.fullSync(player, room, (success, message) ->
+                    android.util.Log.d("CloudSync", "Pause sync: " + message));
+        }
     }
 
     @Override

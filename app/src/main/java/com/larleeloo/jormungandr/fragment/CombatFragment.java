@@ -238,11 +238,20 @@ public class CombatFragment extends Fragment implements ActionAdapter.OnActionCl
                     combatCreature.getDef().getLootTable(), combatCreature.getLevel());
 
             StringBuilder lootMsg = new StringBuilder();
+            int floorIdx = room != null ? room.getObjects().size() : 0;
             for (InventorySlot drop : loot) {
                 ItemDef item = repo.getItemRegistry().getItem(drop.getItemId());
                 String name = item != null ? item.getDisplayName() : drop.getItemId();
-                player.addItemToInventory(drop.getItemId(), drop.getQuantity());
-                lootMsg.append(name).append(" x").append(drop.getQuantity()).append(", ");
+                boolean added = player.addItemToInventory(drop.getItemId(), drop.getQuantity());
+                lootMsg.append(name).append(" x").append(drop.getQuantity());
+                if (!added && room != null) {
+                    lootMsg.append(" (dropped!)");
+                    float fx = 0.3f + (float)(Math.random() * 0.4);
+                    float fy = 0.5f + (float)(Math.random() * 0.2);
+                    room.getObjects().add(RoomObject.createFloorItem(
+                            "loot_" + floorIdx++, drop.getItemId(), drop.getQuantity(), fx, fy));
+                }
+                lootMsg.append(", ");
             }
 
             if (lootMsg.length() > 0) {

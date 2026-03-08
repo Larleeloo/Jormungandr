@@ -5,6 +5,7 @@ import android.content.Context;
 import com.larleeloo.jormungandr.engine.RoomGenerator;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.Room;
+import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.FormulaHelper;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
@@ -112,7 +113,38 @@ public class GameRepository {
         // Save generated room
         roomFileManager.saveRoom(currentRoom);
 
+        // Ensure bidirectional door links: for each door target, if that room
+        // doesn't exist yet, generate it and ensure its BACK door points here.
+        if (region != 0) {
+            ensureBidirectionalDoors(currentRoom, playerLevel);
+        }
+
         return currentRoom;
+    }
+
+    /**
+     * For each door in the source room, check if the target room exists.
+     * If not, generate it and override its BACK door to point back to the source room.
+     */
+    private void ensureBidirectionalDoors(Room sourceRoom, int playerLevel) {
+        for (java.util.Map.Entry<String, String> entry : sourceRoom.getDoors().entrySet()) {
+            String dirName = entry.getKey();
+            String targetId = entry.getValue();
+            if (targetId == null || dirName.equals("BACK")) continue;
+
+            // If target room already exists, don't overwrite it
+            if (roomFileManager.roomExists(targetId)) continue;
+
+            int targetRegion = RoomIdHelper.getRegion(targetId);
+            int targetNumber = RoomIdHelper.getRoomNumber(targetId);
+
+            if (targetRegion == 0) continue; // Don't regenerate hub
+
+            Room targetRoom = roomGenerator.generateRoom(targetRegion, targetNumber, playerLevel);
+            // Override the BACK door to point back to source room
+            targetRoom.getDoors().put("BACK", sourceRoom.getRoomId());
+            roomFileManager.saveRoom(targetRoom);
+        }
     }
 
     public void saveCurrentRoom() {
@@ -137,8 +169,18 @@ public class GameRepository {
             currentPlayer.setRoomsVisitedSinceHub(
                     currentPlayer.getRoomsVisitedSinceHub() + 1);
 
+            // Stamina: consume on movement, regen at hub/waypoint
             if (RoomIdHelper.isHub(roomId)) {
                 currentPlayer.setRoomsVisitedSinceHub(0);
+                currentPlayer.setStamina(currentPlayer.getMaxStamina()); // Full restore at hub
+            } else if (room != null && room.isWaypoint()) {
+                currentPlayer.setStamina(currentPlayer.getMaxStamina()); // Full restore at waypoint
+            } else {
+                // Consume stamina for movement, regen a little
+                int newStamina = currentPlayer.getStamina() - Constants.STAMINA_COST_MOVE
+                        + Constants.STAMINA_REGEN_PER_ROOM;
+                currentPlayer.setStamina(Math.max(0,
+                        Math.min(currentPlayer.getMaxStamina(), newStamina)));
             }
 
             savePlayer();

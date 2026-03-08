@@ -3,6 +3,7 @@ package com.larleeloo.jormungandr.engine;
 import com.larleeloo.jormungandr.model.ActionType;
 import com.larleeloo.jormungandr.model.BuffEffect;
 import com.larleeloo.jormungandr.model.CombatCreature;
+import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.model.EquipmentSlot;
 import com.larleeloo.jormungandr.model.ItemDef;
 import com.larleeloo.jormungandr.model.Player;
@@ -55,7 +56,17 @@ public class CombatEngine {
             return new CombatResult("Invalid item!", 0, true, false, false);
         }
 
+        // Consume stamina for combat actions
+        int staminaCost = getStaminaCost(action);
+        boolean exhausted = player.getStamina() <= 0;
+        player.setStamina(Math.max(0, player.getStamina() - staminaCost));
+
         int damage = calculatePlayerDamage(player, item, action, creature);
+
+        // Exhaustion penalty: 50% damage when stamina is depleted
+        if (exhausted) {
+            damage = Math.max(1, damage / 2);
+        }
 
         switch (action) {
             case SWING:
@@ -234,6 +245,17 @@ public class CombatEngine {
         }
         return FormulaHelper.calculateDefense(totalDefense,
                 player.getStats().getConstitution(), player.getStats().getDexterity());
+    }
+
+    private int getStaminaCost(ActionType action) {
+        switch (action) {
+            case SWING: return Constants.STAMINA_COST_SWING;
+            case SHOOT: return Constants.STAMINA_COST_SHOOT;
+            case BLOCK: return Constants.STAMINA_COST_BLOCK;
+            case THROW: return Constants.STAMINA_COST_THROW;
+            case CAST: return 0; // Cast uses mana, not stamina
+            default: return 0;
+        }
     }
 
     public List<BuffEffect> getPlayerBuffs() {

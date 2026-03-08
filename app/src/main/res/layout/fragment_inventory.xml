@@ -14,95 +14,154 @@
         android:textColor="#FFD700"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="4dp" />
 
-    <!-- Equipment panel -->
-    <LinearLayout
-        android:id="@+id/equipment_panel"
+    <!-- Character silhouette with equipment slots around it -->
+    <FrameLayout
+        android:id="@+id/character_equip_area"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="4dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:background="@drawable/panel_background"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="4dp">
 
-        <TextView
-            android:id="@+id/equipment_main_hand"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:gravity="center"
-            android:text="Main"
-            android:textColor="#AAAAAA"
-            android:textSize="10sp"
-            android:background="@drawable/inventory_slot_background"
-            android:layout_margin="2dp" />
+        <!-- Character silhouette (drawn by custom view) -->
+        <com.larleeloo.jormungandr.view.CharacterSilhouetteView
+            android:id="@+id/character_silhouette"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
-        <TextView
-            android:id="@+id/equipment_off_hand"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:gravity="center"
-            android:text="Off"
-            android:textColor="#AAAAAA"
-            android:textSize="10sp"
-            android:background="@drawable/inventory_slot_background"
-            android:layout_margin="2dp" />
-
+        <!-- HEAD slot - top center -->
         <TextView
             android:id="@+id/equipment_head"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:gravity="center"
             android:text="Head"
             android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:background="@drawable/inventory_slot_background"
-            android:layout_margin="2dp" />
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="4dp" />
 
+        <!-- MAIN HAND slot - left of center body -->
+        <TextView
+            android:id="@+id/equipment_main_hand"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:text="Main"
+            android:textColor="#AAAAAA"
+            android:textSize="9sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="4dp" />
+
+        <!-- OFF HAND slot - right of center body -->
+        <TextView
+            android:id="@+id/equipment_off_hand"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:text="Off"
+            android:textColor="#AAAAAA"
+            android:textSize="9sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="4dp" />
+
+        <!-- CHEST slot - center, slightly above middle -->
         <TextView
             android:id="@+id/equipment_chest"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:gravity="center"
             android:text="Chest"
             android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:background="@drawable/inventory_slot_background"
-            android:layout_margin="2dp" />
+            android:layout_gravity="center"
+            android:layout_marginBottom="30dp" />
 
+        <!-- LEGS slot - center, below middle -->
         <TextView
             android:id="@+id/equipment_legs"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:gravity="center"
             android:text="Legs"
             android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:background="@drawable/inventory_slot_background"
-            android:layout_margin="2dp" />
+            android:layout_gravity="center"
+            android:layout_marginTop="50dp" />
 
+        <!-- FEET slot - bottom center -->
         <TextView
             android:id="@+id/equipment_feet"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:gravity="center"
             android:text="Feet"
             android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:background="@drawable/inventory_slot_background"
-            android:layout_margin="2dp" />
-    </LinearLayout>
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="4dp" />
 
-    <!-- Gold display -->
+        <!-- RING slot - bottom left -->
+        <TextView
+            android:id="@+id/equipment_acc1"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:text="Ring"
+            android:textColor="#AAAAAA"
+            android:textSize="9sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="4dp" />
+
+        <!-- NECKLACE slot - top right -->
+        <TextView
+            android:id="@+id/equipment_acc2"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:text="Neck"
+            android:textColor="#AAAAAA"
+            android:textSize="9sp"
+            android:background="@drawable/inventory_slot_background"
+            android:layout_gravity="top|end"
+            android:layout_marginEnd="4dp"
+            android:layout_marginTop="4dp" />
+
+        <!-- Gold display overlaid at top left -->
+        <TextView
+            android:id="@+id/gold_display"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gold: 0"
+            android:textColor="#FFD700"
+            android:textSize="13sp"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:padding="4dp" />
+
+    </FrameLayout>
+
+    <!-- Drag hint -->
     <TextView
-        android:id="@+id/gold_display"
-        android:layout_width="wrap_content"
+        android:id="@+id/drag_hint"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Gold: 0"
-        android:textColor="#FFD700"
-        android:textSize="14sp"
-        android:layout_marginBottom="4dp" />
+        android:text="Long-press an item to drag it onto equipment slots"
+        android:textColor="#666666"
+        android:textSize="10sp"
+        android:gravity="center"
+        android:layout_marginBottom="2dp" />
 
     <!-- Inventory grid -->
     <androidx.recyclerview.widget.RecyclerView
@@ -120,7 +179,7 @@
         android:padding="8dp"
         android:background="@drawable/panel_background"
         android:visibility="gone"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="4dp">
 
         <TextView
             android:id="@+id/item_name"

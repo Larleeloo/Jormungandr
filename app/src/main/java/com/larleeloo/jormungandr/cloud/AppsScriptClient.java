@@ -114,7 +114,19 @@ public class AppsScriptClient {
         }
     }
 
+    public boolean isConfigured() {
+        return scriptUrl != null && !scriptUrl.isEmpty();
+    }
+
     private SyncResult execute(JSONObject body) {
+        if (!isConfigured()) {
+            android.util.Log.w("CloudSync", "APPS_SCRIPT_URL is not configured. Cloud sync disabled.");
+            return new SyncResult(false, "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java", null);
+        }
+
+        String action = body.optString("action", "unknown");
+        android.util.Log.d("CloudSync", "Executing action: " + action + " to URL: " + scriptUrl);
+
         RequestBody requestBody = RequestBody.create(body.toString(), JSON);
 
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -132,8 +144,10 @@ public class AppsScriptClient {
                     boolean success = result.optBoolean("success", false);
                     String message = result.optString("message", "");
                     String data = result.optString("data", null);
+                    android.util.Log.d("CloudSync", "Response for " + action + ": success=" + success + " msg=" + message);
                     return new SyncResult(success, message, data);
                 }
+                android.util.Log.w("CloudSync", "HTTP " + response.code() + " for " + action);
 
                 // Network error - retry
                 if (attempt < MAX_RETRIES) {

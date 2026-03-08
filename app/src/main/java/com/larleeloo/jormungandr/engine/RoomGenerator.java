@@ -123,6 +123,20 @@ public class RoomGenerator {
             room.getObjects().add(RoomObject.createTrap("trap_0", trapType, damage, x, y));
         }
 
+        // Hidden items (only revealed by torch)
+        if (rng.nextDouble() < 0.20) {
+            List<InventorySlot> hiddenLoot = lootGenerator.generateChestLoot(rng, region, zone);
+            for (int i = 0; i < hiddenLoot.size(); i++) {
+                InventorySlot item = hiddenLoot.get(i);
+                float hx = rng.nextFloatRange(0.1f, 0.8f);
+                float hy = rng.nextFloatRange(0.4f, 0.7f);
+                RoomObject hiddenItem = RoomObject.createFloorItem(
+                        "hidden_" + i, item.getItemId(), item.getQuantity(), hx, hy);
+                hiddenItem.setHidden(true);
+                room.getObjects().add(hiddenItem);
+            }
+        }
+
         // Decorations
         addDecorations(room, rng);
     }

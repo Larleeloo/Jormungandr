@@ -1,5 +1,31 @@
 [
   {
+    "itemId": "torch",
+    "displayName": "Torch",
+    "description": "A lit torch that illuminates dark corners, revealing hidden traps and secret items.",
+    "type": "TOOL",
+    "subType": "light",
+    "rarity": "COMMON",
+    "maxStack": 8,
+    "damage": 0,
+    "defense": 0,
+    "healAmount": 0,
+    "manaRestore": 0,
+    "staminaRestore": 0,
+    "equipSlot": null,
+    "spriteId": "torch",
+    "spritePath": "items/tool/torch.png",
+    "placeholderColor": "#FF8C00",
+    "placeholderShape": "tool",
+    "actions": [
+      "USE",
+      "DROP"
+    ],
+    "debuffRegions": [],
+    "buyPrice": 15,
+    "sellPrice": 5
+  },
+  {
     "itemId": "yarn",
     "displayName": "Yarn",
     "description": "A ball of yarn, useful for crafting.",
