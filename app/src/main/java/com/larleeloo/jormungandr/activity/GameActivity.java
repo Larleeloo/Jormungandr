@@ -1,6 +1,8 @@
 package com.larleeloo.jormungandr.activity;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -26,11 +28,13 @@ import com.larleeloo.jormungandr.util.Constants;
 
 public class GameActivity extends AppCompatActivity {
 
-    private TextView hudHp, hudMana, hudStamina, hudLevel;
+    private TextView hudHp, hudMana, hudStamina, hudLevel, syncIndicator;
     private Button btnInventory, btnCharacter, btnMap, btnRoom;
     private Fragment currentFragment;
     private String currentFragmentTag;
     private CloudSyncManager cloudSyncManager;
+    private final Handler syncUiHandler = new Handler(Looper.getMainLooper());
+    private Runnable syncHideRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,12 +64,13 @@ public class GameActivity extends AppCompatActivity {
         btnMap.setOnClickListener(v -> showFragment(new MapFragment(), "map"));
         btnRoom.setOnClickListener(v -> showFragment(new RoomFragment(), "room"));
 
+        // Sync status indicator
+        syncIndicator = findViewById(R.id.sync_indicator);
+
         // Cloud sync setup
         cloudSyncManager = new CloudSyncManager();
         if (Constants.APPS_SCRIPT_URL.isEmpty()) {
-            android.widget.Toast.makeText(this,
-                    "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java",
-                    android.widget.Toast.LENGTH_LONG).show();
+            showSyncStatus(false, "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java");
         }
 
         // Load the initial room
@@ -96,15 +101,12 @@ public class GameActivity extends AppCompatActivity {
         Room room = repo.navigateToRoom(roomId);
         updateHud();
 
-        // Trigger cloud sync at save points (hub and waypoints)
+        // Live cloud sync on every room transition
         Player player = repo.getCurrentPlayer();
         if (player != null && cloudSyncManager != null) {
-            boolean isHub = roomId != null && roomId.startsWith("r0_");
-            boolean isWaypoint = room != null && room.isWaypoint();
-            if (isHub || isWaypoint) {
-                cloudSyncManager.fullSync(player, room, (success, message) ->
-                        android.util.Log.d("CloudSync", "Auto-sync: " + message));
-            }
+            showSyncStatus(true, "Syncing...");
+            cloudSyncManager.fullSync(player, room, (success, message) ->
+                    showSyncStatus(success, message));
         }
 
         showFragment(new RoomFragment(), "room");
@@ -117,17 +119,31 @@ public class GameActivity extends AppCompatActivity {
 
     public void returnFromCombat(boolean victory) {
         updateHud();
+        GameRepository repo = GameRepository.getInstance(this);
+        Player player = repo.getCurrentPlayer();
         if (victory) {
+            // Sync after combat victory
+            if (player != null && cloudSyncManager != null) {
+                Room room = repo.getCurrentRoom();
+                showSyncStatus(true, "Syncing...");
+                cloudSyncManager.fullSync(player, room, (success, message) ->
+                        showSyncStatus(success, message));
+            }
             showFragment(new RoomFragment(), "room");
         } else {
             // Death: return to hub
-            GameRepository repo = GameRepository.getInstance(this);
-            Player player = repo.getCurrentPlayer();
             if (player != null) {
                 player.setHp(player.getMaxHp() / 2);
                 player.setRoomsVisitedSinceHub(0);
                 repo.navigateToRoom("r0_00000");
                 repo.savePlayer();
+                // Sync death/respawn state
+                if (cloudSyncManager != null) {
+                    Room room = repo.getCurrentRoom();
+                    showSyncStatus(true, "Syncing...");
+                    cloudSyncManager.fullSync(player, room, (success, message) ->
+                            showSyncStatus(success, message));
+                }
             }
             showFragment(new RoomFragment(), "room");
         }
@@ -151,6 +167,32 @@ public class GameActivity extends AppCompatActivity {
         btnRoom.setTextColor(resolveColor("room".equals(activeTag) ? R.color.gold : R.color.white));
     }
 
+    private void showSyncStatus(boolean success, String message) {
+        if (syncIndicator == null) return;
+
+        // Cancel any pending hide
+        if (syncHideRunnable != null) {
+            syncUiHandler.removeCallbacks(syncHideRunnable);
+        }
+
+        syncIndicator.setVisibility(android.view.View.VISIBLE);
+        syncIndicator.setText(message);
+
+        if (message.contains("Syncing")) {
+            syncIndicator.setTextColor(0xFFAAAAAA); // gray while in progress
+        } else if (success) {
+            syncIndicator.setTextColor(0xFF44FF44); // green on success
+            // Auto-hide success after 3 seconds
+            syncHideRunnable = () -> syncIndicator.setVisibility(android.view.View.GONE);
+            syncUiHandler.postDelayed(syncHideRunnable, 3000);
+        } else {
+            syncIndicator.setTextColor(0xFFFF4444); // red on failure
+            // Keep errors visible longer (8 seconds)
+            syncHideRunnable = () -> syncIndicator.setVisibility(android.view.View.GONE);
+            syncUiHandler.postDelayed(syncHideRunnable, 8000);
+        }
+    }
+
     private int resolveColor(int resId) {
         return getResources().getColor(resId, getTheme());
     }
@@ -168,7 +210,7 @@ public class GameActivity extends AppCompatActivity {
         Room room = repo.getCurrentRoom();
         if (player != null && cloudSyncManager != null) {
             cloudSyncManager.fullSync(player, room, (success, message) ->
-                    android.util.Log.d("CloudSync", "Pause sync: " + message));
+                    showSyncStatus(success, message));
         }
     }
 

@@ -116,19 +116,46 @@ public class CloudSyncManager {
     }
 
     /**
-     * Full sync at save point: upload player + current room.
+     * Full sync: upload player + current room.
+     * Returns detailed error messages for UI feedback.
      */
     public void fullSync(Player player, Room room, SyncCallback callback) {
         executor.execute(() -> {
+            if (!client.isConfigured()) {
+                if (callback != null) {
+                    mainHandler.post(() -> callback.onSyncComplete(false,
+                            "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java"));
+                }
+                return;
+            }
+
             SyncResult playerResult = client.savePlayer(player.getAccessCode(), JsonHelper.toJson(player));
             SyncResult roomResult = null;
             if (room != null) {
                 roomResult = client.saveRoom(room.getRoomId(), JsonHelper.toJson(room));
             }
+
             boolean success = playerResult.isSuccess() && (roomResult == null || roomResult.isSuccess());
+            String message;
+            if (success) {
+                message = "Synced";
+            } else {
+                StringBuilder sb = new StringBuilder("Sync failed: ");
+                if (!playerResult.isSuccess()) {
+                    sb.append("Player (").append(playerResult.getMessage()).append(")");
+                    if (roomResult != null && !roomResult.isSuccess()) {
+                        sb.append(", ");
+                    }
+                }
+                if (roomResult != null && !roomResult.isSuccess()) {
+                    sb.append("Room (").append(roomResult.getMessage()).append(")");
+                }
+                message = sb.toString();
+            }
+
             if (callback != null) {
-                mainHandler.post(() -> callback.onSyncComplete(success,
-                        success ? "Sync complete!" : "Sync failed"));
+                final String finalMessage = message;
+                mainHandler.post(() -> callback.onSyncComplete(success, finalMessage));
             }
         });
     }
