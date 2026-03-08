@@ -101,7 +101,7 @@ public class CloudSyncManager {
                             boolean exists = false;
                             for (PlayerNote localNote : localRoom.getPlayerNotes()) {
                                 if (localNote.getText().equals(cloudNote.getText())
-                                        && localNote.getAuthor().equals(cloudNote.getAuthor())) {
+                                        && localNote.getPlayerName().equals(cloudNote.getPlayerName())) {
                                     exists = true;
                                     break;
                                 }
