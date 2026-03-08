@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.adapter.NoteAdapter;
+import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.PlayerNote;
@@ -68,6 +69,10 @@ public class NoteFragment extends Fragment {
 
             repo.saveCurrentRoom();
             repo.savePlayer();
+
+            // Sync notes to cloud
+            CloudSyncManager syncManager = new CloudSyncManager();
+            syncManager.syncNotesToCloud(room.getRoomId(), room.getPlayerNotes(), null);
 
             notes.add(note);
             adapter.notifyItemInserted(notes.size() - 1);

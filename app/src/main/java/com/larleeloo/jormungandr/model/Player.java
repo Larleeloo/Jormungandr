@@ -33,6 +33,7 @@ public class Player {
     private List<String> perks;
     private List<PlayerNote> notes;
     private int roomsVisitedSinceHub;
+    private String previousRoomId;
 
     public Player() {
         this.version = Constants.GAME_VERSION;
@@ -237,4 +238,6 @@ public class Player {
     public void setNotes(List<PlayerNote> notes) { this.notes = notes; }
     public int getRoomsVisitedSinceHub() { return roomsVisitedSinceHub; }
     public void setRoomsVisitedSinceHub(int roomsVisitedSinceHub) { this.roomsVisitedSinceHub = roomsVisitedSinceHub; }
+    public String getPreviousRoomId() { return previousRoomId; }
+    public void setPreviousRoomId(String previousRoomId) { this.previousRoomId = previousRoomId; }
 }

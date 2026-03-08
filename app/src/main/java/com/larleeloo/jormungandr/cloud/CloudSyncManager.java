@@ -6,7 +6,10 @@ import android.os.Looper;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.data.JsonHelper;
 import com.larleeloo.jormungandr.model.Player;
+import com.larleeloo.jormungandr.model.PlayerNote;
 import com.larleeloo.jormungandr.model.Room;
+
+import java.util.List;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -80,11 +83,62 @@ public class CloudSyncManager {
     }
 
     /**
-     * Download room data from Drive (async).
+     * Download room data from Drive (async). Merges notes from cloud into local room.
      */
     public void syncRoomFromCloud(String roomId, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.getRoom(roomId);
+            if (result.isSuccess() && result.getData() != null) {
+                Room cloudRoom = JsonHelper.fromJson(result.getData(), Room.class);
+                GameRepository repo = GameRepository.getInstance();
+                if (cloudRoom != null && repo != null) {
+                    Room localRoom = repo.getCurrentRoom();
+                    // Merge cloud notes into local room (notes are the main cross-device data)
+                    if (localRoom != null && localRoom.getRoomId() != null
+                            && localRoom.getRoomId().equals(roomId)
+                            && cloudRoom.getPlayerNotes() != null) {
+                        for (PlayerNote cloudNote : cloudRoom.getPlayerNotes()) {
+                            boolean exists = false;
+                            for (PlayerNote localNote : localRoom.getPlayerNotes()) {
+                                if (localNote.getText().equals(cloudNote.getText())
+                                        && localNote.getAuthor().equals(cloudNote.getAuthor())) {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                            if (!exists) {
+                                localRoom.getPlayerNotes().add(cloudNote);
+                            }
+                        }
+                        repo.saveCurrentRoom();
+                    }
+                }
+            }
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Upload notes for a room to Drive (async).
+     */
+    public void syncNotesToCloud(String roomId, List<PlayerNote> notes, SyncCallback callback) {
+        executor.execute(() -> {
+            String json = JsonHelper.toJson(notes);
+            SyncResult result = client.saveNotes(roomId, json);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Download notes for a room from Drive (async).
+     */
+    public void syncNotesFromCloud(String roomId, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.getNotes(roomId);
             if (callback != null) {
                 mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
             }
