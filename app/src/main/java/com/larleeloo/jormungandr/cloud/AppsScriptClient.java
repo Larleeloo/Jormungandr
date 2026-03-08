@@ -114,6 +114,18 @@ public class AppsScriptClient {
         }
     }
 
+    public SyncResult saveNotes(String roomId, String notesJson) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "saveNotes");
+            body.put("roomId", roomId);
+            body.put("data", notesJson);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public boolean isConfigured() {
         return scriptUrl != null && !scriptUrl.isEmpty();
     }

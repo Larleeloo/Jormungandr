@@ -98,15 +98,25 @@ public class GameActivity extends AppCompatActivity {
 
     public void navigateToRoom(String roomId) {
         GameRepository repo = GameRepository.getInstance(this);
+        Player player = repo.getCurrentPlayer();
+
+        // Upload the room we're LEAVING to cloud (lazy sync)
+        Room leavingRoom = repo.getCurrentRoom();
+        if (leavingRoom != null && player != null && cloudSyncManager != null) {
+            cloudSyncManager.syncRoomToCloud(leavingRoom, null); // fire-and-forget
+        }
+
+        // Navigate (loads/generates the new room locally)
         Room room = repo.navigateToRoom(roomId);
         updateHud();
 
-        // Live cloud sync on every room transition
-        Player player = repo.getCurrentPlayer();
+        // Sync player state and download the entering room from cloud
         if (player != null && cloudSyncManager != null) {
             showSyncStatus(true, "Syncing...");
-            cloudSyncManager.fullSync(player, room, (success, message) ->
+            cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
                     showSyncStatus(success, message));
+            // Try to fetch room from cloud in background (won't block gameplay)
+            cloudSyncManager.syncRoomFromCloud(roomId, null);
         }
 
         showFragment(new RoomFragment(), "room");
@@ -122,26 +132,34 @@ public class GameActivity extends AppCompatActivity {
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
         if (victory) {
-            // Sync after combat victory
+            // Sync player and room after combat victory
             if (player != null && cloudSyncManager != null) {
                 Room room = repo.getCurrentRoom();
                 showSyncStatus(true, "Syncing...");
-                cloudSyncManager.fullSync(player, room, (success, message) ->
+                cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
                         showSyncStatus(success, message));
+                if (room != null) {
+                    cloudSyncManager.syncRoomToCloud(room, null);
+                }
             }
             showFragment(new RoomFragment(), "room");
         } else {
             // Death: return to hub
             if (player != null) {
+                // Upload the room where player died
+                Room deathRoom = repo.getCurrentRoom();
+                if (cloudSyncManager != null && deathRoom != null) {
+                    cloudSyncManager.syncRoomToCloud(deathRoom, null);
+                }
+
                 player.setHp(player.getMaxHp() / 2);
                 player.setRoomsVisitedSinceHub(0);
                 repo.navigateToRoom("r0_00000");
                 repo.savePlayer();
-                // Sync death/respawn state
+                // Sync respawn state
                 if (cloudSyncManager != null) {
-                    Room room = repo.getCurrentRoom();
                     showSyncStatus(true, "Syncing...");
-                    cloudSyncManager.fullSync(player, room, (success, message) ->
+                    cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
                             showSyncStatus(success, message));
                 }
             }
@@ -205,12 +223,14 @@ public class GameActivity extends AppCompatActivity {
         repo.savePlayer();
         repo.saveCurrentRoom();
 
-        // Also trigger cloud sync on pause
+        // Sync player and current room individually on pause
         Player player = repo.getCurrentPlayer();
         Room room = repo.getCurrentRoom();
         if (player != null && cloudSyncManager != null) {
-            cloudSyncManager.fullSync(player, room, (success, message) ->
-                    showSyncStatus(success, message));
+            cloudSyncManager.syncPlayerToCloud(player, null);
+            if (room != null) {
+                cloudSyncManager.syncRoomToCloud(room, null);
+            }
         }
     }
 

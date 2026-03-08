@@ -163,6 +163,19 @@ public class GameRepository {
         Room room = loadOrGenerateRoom(roomId);
 
         if (currentPlayer != null) {
+            // Track previous room for true 1:1 BACK navigation
+            String oldRoomId = currentPlayer.getCurrentRoomId();
+            if (oldRoomId != null && !oldRoomId.equals(roomId)) {
+                currentPlayer.setPreviousRoomId(oldRoomId);
+            }
+
+            // Override the BACK door to point to the actual previous room
+            if (room != null && currentPlayer.getPreviousRoomId() != null
+                    && !RoomIdHelper.isHub(roomId)) {
+                room.getDoors().put("BACK", currentPlayer.getPreviousRoomId());
+                roomFileManager.saveRoom(room);
+            }
+
             currentPlayer.setCurrentRoomId(roomId);
             currentPlayer.setCurrentRegion(RoomIdHelper.getRegion(roomId));
             currentPlayer.discoverRoom(roomId, RoomIdHelper.getRegion(roomId));
