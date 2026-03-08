@@ -15,6 +15,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.larleeloo.jormungandr.R;
+import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.util.Constants;
@@ -87,8 +88,23 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        Player player = repo.createNewPlayer(code, name);
-        launchGame();
+        // Check cloud for existing save before overwriting
+        CloudSyncManager syncManager = new CloudSyncManager();
+        Toast.makeText(this, "Checking for existing save...", Toast.LENGTH_SHORT).show();
+
+        syncManager.syncPlayerFromCloud(code, (success, message) -> {
+            if (success && repo.getCurrentPlayer() != null) {
+                Toast.makeText(this, "A cloud save exists for this code. Use Continue instead.",
+                        Toast.LENGTH_SHORT).show();
+                // Reset - don't keep the downloaded player as current
+                repo.setCurrentPlayer(null);
+            } else {
+                // No cloud save found, safe to create new player
+                repo.createNewPlayer(code, name);
+                launchGame();
+            }
+            syncManager.shutdown();
+        });
     }
 
     private void continueGame() {
@@ -118,13 +134,29 @@ public class MainActivity extends AppCompatActivity {
     private void loadExistingSave(String code) {
         GameRepository repo = GameRepository.getInstance(this);
 
-        if (!repo.playerExists(code)) {
-            Toast.makeText(this, "No save found for this access code", Toast.LENGTH_SHORT).show();
+        // Try local save first
+        if (repo.playerExists(code)) {
+            repo.loadPlayer(code);
+            launchGame();
             return;
         }
 
-        repo.loadPlayer(code);
-        launchGame();
+        // No local save — try downloading from cloud
+        CloudSyncManager syncManager = new CloudSyncManager();
+        Toast.makeText(this, "Checking cloud save...", Toast.LENGTH_SHORT).show();
+
+        syncManager.syncPlayerFromCloud(code, (success, message) -> {
+            if (success && repo.getCurrentPlayer() != null) {
+                // Cloud save downloaded and set as current player
+                repo.savePlayer(); // Persist locally for next time
+                Toast.makeText(this, "Cloud save loaded!", Toast.LENGTH_SHORT).show();
+                launchGame();
+            } else {
+                Toast.makeText(this, "No save found locally or in cloud for this access code",
+                        Toast.LENGTH_LONG).show();
+            }
+            syncManager.shutdown();
+        });
     }
 
     private void launchGame() {
