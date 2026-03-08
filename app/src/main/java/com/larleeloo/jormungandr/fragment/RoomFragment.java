@@ -31,6 +31,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
     private RoomCanvasView roomCanvas;
     private TextView roomMessage;
+    private Button btnUseTorch;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Nullable
@@ -47,6 +48,9 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         roomCanvas = view.findViewById(R.id.room_canvas);
         roomMessage = view.findViewById(R.id.room_message);
         roomCanvas.setInteractionListener(this);
+
+        btnUseTorch = view.findViewById(R.id.btn_use_torch);
+        btnUseTorch.setOnClickListener(v -> useTorch());
 
         Button btnLeaveNote = view.findViewById(R.id.btn_leave_note);
         btnLeaveNote.setOnClickListener(v -> {
@@ -72,6 +76,9 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
         if (room != null) {
             roomCanvas.setRoom(room);
+
+            // Show torch button if player has torches and room has hidden objects
+            updateTorchButton(room);
 
             // Check for living creature - auto-enter combat
             if (room.hasLivingCreature()) {
@@ -272,6 +279,56 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         repo.savePlayer();
         repo.saveCurrentRoom();
         roomCanvas.renderRoom();
+    }
+
+    private void updateTorchButton(Room room) {
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        Player player = repo.getCurrentPlayer();
+        boolean hasHidden = false;
+        for (RoomObject obj : room.getObjects()) {
+            if (obj.isHidden()) { hasHidden = true; break; }
+        }
+        boolean hasTorch = player != null && player.countItem("torch") > 0;
+        btnUseTorch.setVisibility(hasTorch && hasHidden ? View.VISIBLE : View.GONE);
+        if (hasTorch && hasHidden) {
+            btnUseTorch.setText("Torch (" + player.countItem("torch") + ")");
+        }
+    }
+
+    private void useTorch() {
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        Player player = repo.getCurrentPlayer();
+        Room room = repo.getCurrentRoom();
+        if (player == null || room == null) return;
+
+        if (player.countItem("torch") <= 0) {
+            showMessage("You have no torches!");
+            return;
+        }
+
+        player.removeItemFromInventory("torch", 1);
+
+        int revealed = 0;
+        for (RoomObject obj : room.getObjects()) {
+            if (obj.isHidden()) {
+                obj.setHidden(false);
+                revealed++;
+            }
+        }
+
+        repo.savePlayer();
+        repo.saveCurrentRoom();
+        roomCanvas.renderRoom();
+        updateTorchButton(room);
+
+        if (revealed > 0) {
+            showMessage("The torch reveals " + revealed + " hidden object(s)!");
+        } else {
+            showMessage("The torch illuminates the room. Nothing hidden here.");
+        }
+
+        GameActivity activity = (GameActivity) getActivity();
+        if (activity != null) activity.updateHud();
     }
 
     private void showMessage(String message) {

@@ -16,6 +16,8 @@ import com.larleeloo.jormungandr.model.BiomeType;
 import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.model.RoomObject;
+import com.larleeloo.jormungandr.util.Constants;
+import com.larleeloo.jormungandr.util.RoomIdHelper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -359,7 +361,45 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
             wpPaint.setTextAlign(Paint.Align.CENTER);
             wpPaint.setShadowLayer(3f, 0, 0, Color.BLACK);
             canvas.drawText("WAYPOINT", canvasWidth / 2f, canvasHeight * 0.95f, wpPaint);
+        } else if (currentRoom.getRegion() > 0) {
+            // Hot/cold waypoint proximity indicator
+            drawWaypointProximity(canvas);
         }
+    }
+
+    private void drawWaypointProximity(Canvas canvas) {
+        int roomNumber = RoomIdHelper.getRoomNumber(currentRoom.getRoomId());
+        int waypointId = Constants.WAYPOINT_ROOM_ID;
+        int distance = Math.abs(roomNumber - waypointId);
+
+        String label;
+        int color;
+        if (distance <= 5) {
+            label = "SCORCHING";
+            color = 0xFFFF0000;
+        } else if (distance <= 20) {
+            label = "HOT";
+            color = 0xFFFF4400;
+        } else if (distance <= 50) {
+            label = "WARM";
+            color = 0xFFFF8800;
+        } else if (distance <= 150) {
+            label = "COOL";
+            color = 0xFF4488FF;
+        } else if (distance <= 400) {
+            label = "COLD";
+            color = 0xFF0044FF;
+        } else {
+            label = "FREEZING";
+            color = 0xFF0000CC;
+        }
+
+        Paint proximityPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        proximityPaint.setColor(color);
+        proximityPaint.setTextSize(20f);
+        proximityPaint.setTextAlign(Paint.Align.RIGHT);
+        proximityPaint.setShadowLayer(2f, 1f, 1f, Color.BLACK);
+        canvas.drawText("Waypoint: " + label, canvasWidth - 20, canvasHeight - 20, proximityPaint);
     }
 
     @Override

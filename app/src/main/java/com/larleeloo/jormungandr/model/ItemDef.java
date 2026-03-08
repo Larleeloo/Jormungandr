@@ -65,6 +65,10 @@ public class ItemDef {
         return t == ItemType.POTION || t == ItemType.FOOD || t == ItemType.SCROLL;
     }
 
+    public boolean isUsable() {
+        return actions != null && actions.contains("USE");
+    }
+
     // Getters and setters
     public String getItemId() { return itemId; }
     public void setItemId(String itemId) { this.itemId = itemId; }

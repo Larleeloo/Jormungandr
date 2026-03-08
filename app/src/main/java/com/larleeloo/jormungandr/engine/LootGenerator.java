@@ -85,13 +85,13 @@ public class LootGenerator {
     private Rarity rollRarity(SeededRandom rng, int zone) {
         // Higher zones slightly boost rare drops
         double roll = rng.nextDouble();
-        double zoneBonus = zone * 0.02; // Each zone adds 2% to rare+ chance
+        double zoneBonus = zone * 0.005; // Each zone adds 0.5% to rare+ chance
 
-        if (roll < Rarity.MYTHIC.getDropRate() + zoneBonus * 0.1) return Rarity.MYTHIC;
+        if (roll < Rarity.MYTHIC.getDropRate() + zoneBonus * 0.05) return Rarity.MYTHIC;
         roll -= Rarity.MYTHIC.getDropRate();
-        if (roll < Rarity.LEGENDARY.getDropRate() + zoneBonus * 0.3) return Rarity.LEGENDARY;
+        if (roll < Rarity.LEGENDARY.getDropRate() + zoneBonus * 0.1) return Rarity.LEGENDARY;
         roll -= Rarity.LEGENDARY.getDropRate();
-        if (roll < Rarity.EPIC.getDropRate() + zoneBonus * 0.5) return Rarity.EPIC;
+        if (roll < Rarity.EPIC.getDropRate() + zoneBonus * 0.2) return Rarity.EPIC;
         roll -= Rarity.EPIC.getDropRate();
         if (roll < Rarity.RARE.getDropRate() + zoneBonus) return Rarity.RARE;
         roll -= Rarity.RARE.getDropRate();

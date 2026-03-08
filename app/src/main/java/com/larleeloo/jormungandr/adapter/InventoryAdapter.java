@@ -1,5 +1,7 @@
 package com.larleeloo.jormungandr.adapter;
 
+import android.content.ClipData;
+import android.content.ClipDescription;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
@@ -85,6 +87,18 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.Slot
             if (oldSelected >= 0) notifyItemChanged(oldSelected);
             notifyItemChanged(selectedPosition);
             listener.onSlotClick(selectedPosition, slot);
+        });
+
+        // Long-press starts drag for non-empty slots
+        holder.itemView.setOnLongClickListener(v -> {
+            if (slot.isEmpty()) return false;
+            int pos = holder.getAdapterPosition();
+            ClipData data = new ClipData("inventory_slot",
+                    new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN},
+                    new ClipData.Item(String.valueOf(pos)));
+            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
+            v.startDragAndDrop(data, shadow, slot, 0);
+            return true;
         });
     }
 
