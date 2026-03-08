@@ -28,6 +28,7 @@ public class RoomObject {
     private String trapType;
     private int damage;
     private boolean triggered;
+    private boolean hidden; // Hidden objects (traps) are not rendered until revealed
 
     // Item fields (loose items on the floor)
     private String itemId;
@@ -84,6 +85,7 @@ public class RoomObject {
         obj.y = y;
         obj.width = 0.06f;
         obj.height = 0.06f;
+        obj.hidden = true; // Traps are hidden by default
         return obj;
     }
 
@@ -169,4 +171,6 @@ public class RoomObject {
     public void setItemId(String itemId) { this.itemId = itemId; }
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
+    public boolean isHidden() { return hidden; }
+    public void setHidden(boolean hidden) { this.hidden = hidden; }
 }

@@ -31,7 +31,7 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
     private LinearLayout itemDetailPanel;
     private TextView itemName, itemDescription, itemStats, goldDisplay;
     private Button btnEquip, btnUse, btnDrop;
-    private TextView eqMainHand, eqOffHand, eqHead, eqChest, eqLegs, eqFeet;
+    private TextView eqMainHand, eqOffHand, eqHead, eqChest, eqLegs, eqFeet, eqAcc1, eqAcc2;
     private int selectedSlotIndex = -1;
 
     @Nullable
@@ -61,6 +61,8 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         eqChest = view.findViewById(R.id.equipment_chest);
         eqLegs = view.findViewById(R.id.equipment_legs);
         eqFeet = view.findViewById(R.id.equipment_feet);
+        eqAcc1 = view.findViewById(R.id.equipment_acc1);
+        eqAcc2 = view.findViewById(R.id.equipment_acc2);
 
         inventoryGrid.setLayoutManager(new GridLayoutManager(requireContext(), 4));
 
@@ -144,6 +146,9 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         EquipmentSlot newEquip = new EquipmentSlot(item.getItemId(), equipSlotName);
         player.getEquipment().add(newEquip);
 
+        // Ensure inventory capacity is updated (e.g., backpack adds slots)
+        player.ensureInventoryCapacity();
+
         repo.savePlayer();
         adapter.notifyDataSetChanged();
         updateEquipmentDisplay(player, repo);
@@ -208,7 +213,9 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         slot.setItemId(null);
         slot.setQuantity(0);
 
+        player.compactInventory();
         repo.savePlayer();
+        selectedSlotIndex = -1;
         adapter.notifyDataSetChanged();
         itemDetailPanel.setVisibility(View.GONE);
 
@@ -222,6 +229,8 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         updateEquipSlot(eqChest, player, repo, EquipmentSlot.CHEST, "Chest");
         updateEquipSlot(eqLegs, player, repo, EquipmentSlot.LEGS, "Legs");
         updateEquipSlot(eqFeet, player, repo, EquipmentSlot.FEET, "Feet");
+        updateEquipSlot(eqAcc1, player, repo, EquipmentSlot.ACCESSORY_1, "Ring");
+        updateEquipSlot(eqAcc2, player, repo, EquipmentSlot.ACCESSORY_2, "Neck");
     }
 
     private void updateEquipSlot(TextView view, Player player, GameRepository repo,
@@ -230,8 +239,10 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         if (eq != null && !eq.isEmpty()) {
             ItemDef item = repo.getItemRegistry().getItem(eq.getItemId());
             if (item != null) {
-                view.setText(item.getDisplayName().length() > 6 ?
-                        item.getDisplayName().substring(0, 6) : item.getDisplayName());
+                // Show abbreviated name that fits: up to 8 chars with rarity color
+                String name = item.getDisplayName();
+                if (name.length() > 8) name = name.substring(0, 7) + ".";
+                view.setText(name);
                 view.setTextColor(item.getRarityEnum().getGlowColor());
                 return;
             }

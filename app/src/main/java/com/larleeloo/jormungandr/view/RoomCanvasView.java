@@ -281,6 +281,9 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         float roomH = roomBottom - roomTop;
 
         for (RoomObject obj : currentRoom.getObjects()) {
+            // Skip hidden objects (e.g., concealed traps)
+            if (obj.isHidden()) continue;
+
             float objX = roomLeft + obj.getX() * roomW;
             float objY = roomTop + obj.getY() * roomH;
             float objW = obj.getWidth() * roomW;

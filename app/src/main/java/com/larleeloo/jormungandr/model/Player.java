@@ -66,8 +66,18 @@ public class Player {
     }
 
     public int getMaxInventorySlots() {
-        return Math.min(Constants.MAX_INVENTORY_SLOTS,
-                Constants.MIN_INVENTORY_SLOTS + stats.getStrength() * 2);
+        int base = Constants.MIN_INVENTORY_SLOTS + stats.getStrength() * 2;
+        // Backpack bonus: check if any equipped item has subType "backpack"
+        for (EquipmentSlot eq : equipment) {
+            if (eq != null && !eq.isEmpty()) {
+                String id = eq.getItemId();
+                if (id != null && id.contains("backpack")) {
+                    base += 8;
+                    break;
+                }
+            }
+        }
+        return Math.min(Constants.MAX_INVENTORY_SLOTS, base);
     }
 
     public int getMaxEquipmentSlots() {
@@ -131,6 +141,32 @@ public class Player {
             }
         }
         return quantity <= 0;
+    }
+
+    public void compactInventory() {
+        List<InventorySlot> nonEmpty = new ArrayList<>();
+        for (InventorySlot slot : inventory) {
+            if (!slot.isEmpty()) {
+                nonEmpty.add(new InventorySlot(slot.getItemId(), slot.getQuantity(), 0));
+            }
+        }
+        for (int i = 0; i < inventory.size(); i++) {
+            if (i < nonEmpty.size()) {
+                inventory.get(i).setItemId(nonEmpty.get(i).getItemId());
+                inventory.get(i).setQuantity(nonEmpty.get(i).getQuantity());
+            } else {
+                inventory.get(i).setItemId(null);
+                inventory.get(i).setQuantity(0);
+            }
+            inventory.get(i).setSlot(i);
+        }
+    }
+
+    public void ensureInventoryCapacity() {
+        int max = getMaxInventorySlots();
+        while (inventory.size() < max) {
+            inventory.add(new InventorySlot(null, 0, inventory.size()));
+        }
     }
 
     public int countItem(String itemId) {

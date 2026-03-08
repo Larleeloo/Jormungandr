@@ -52,6 +52,7 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.Slot
         InventorySlot slot = inventory.get(position);
 
         if (slot.isEmpty()) {
+            holder.slotIcon.setImageBitmap(null);
             holder.slotIcon.setImageDrawable(null);
             holder.slotQuantity.setText("");
             holder.slotContainer.setBackgroundResource(R.drawable.inventory_slot_background);

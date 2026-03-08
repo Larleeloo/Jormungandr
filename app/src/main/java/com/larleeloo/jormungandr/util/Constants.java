@@ -35,6 +35,14 @@ public final class Constants {
     public static final int MIN_ITEMS_PER_CHEST = 1;
     public static final int MAX_ITEMS_PER_CHEST = 5;
 
+    // Stamina costs
+    public static final int STAMINA_COST_MOVE = 1;
+    public static final int STAMINA_COST_SWING = 2;
+    public static final int STAMINA_COST_SHOOT = 1;
+    public static final int STAMINA_COST_BLOCK = 1;
+    public static final int STAMINA_COST_THROW = 1;
+    public static final int STAMINA_REGEN_PER_ROOM = 1;
+
     // Combat
     public static final double DIFFICULTY_SCALE_PER_LEVEL = 0.15;
 
@@ -51,6 +59,11 @@ public final class Constants {
     public static final String HUB_ROOM_ID = "r0_00000";
 
     // Cloud sync - set APPS_SCRIPT_URL after deploying your Apps Script
+    // See cloud/apps-script/Code.gs for deployment instructions.
+    // Steps: 1) Deploy Code.gs as Web App in Google Apps Script
+    //        2) Create 3 Drive folders (players, rooms, notes)
+    //        3) Set folder IDs in Code.gs
+    //        4) Paste the deployed Web App URL here
     public static final String APPS_SCRIPT_URL = "";
     public static final String ROOM_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
     public static final String PLAYER_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
