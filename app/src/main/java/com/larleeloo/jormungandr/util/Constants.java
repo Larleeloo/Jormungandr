@@ -65,8 +65,9 @@ public final class Constants {
     //        3) Set folder IDs in Code.gs
     //        4) Paste the deployed Web App URL here
     public static final String APPS_SCRIPT_URL = "";
-    public static final String ROOM_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
     public static final String PLAYER_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
+    public static final String ROOM_FOLDER_ID = "1lVx_0npSW4JVaiSr98VQyOpRjxMZ-pfg";
+    public static final String NOTES_FOLDER_ID = "16iJKA0ch5gUDL6yJ_zVa0c4xMBPrrmLG";
 
     // Access codes (25 initial testing codes)
     public static final int MAX_ACCESS_CODES = 25;
