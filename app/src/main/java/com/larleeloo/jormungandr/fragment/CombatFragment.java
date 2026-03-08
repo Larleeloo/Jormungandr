@@ -231,6 +231,9 @@ public class CombatFragment extends Fragment implements ActionAdapter.OnActionCl
             String msg = "Victory! +" + xp + " XP";
             if (leveledUp) msg += " LEVEL UP! You are now level " + player.getLevel() + "!";
 
+            // Get room reference for loot drops and creature marking
+            Room room = repo.getCurrentRoom();
+
             // Generate and award loot
             LootGenerator lootGen = new LootGenerator(repo.getItemRegistry());
             SeededRandom rng = new SeededRandom(System.currentTimeMillis());
@@ -259,7 +262,6 @@ public class CombatFragment extends Fragment implements ActionAdapter.OnActionCl
             }
 
             // Mark creature as dead in room
-            Room room = repo.getCurrentRoom();
             if (room != null) {
                 for (RoomObject obj : room.getObjects()) {
                     if ("creature".equals(obj.getType()) && obj.isAlive()) {
