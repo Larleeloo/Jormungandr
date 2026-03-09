@@ -159,20 +159,46 @@ public class GameRepository {
 
     // ---- Navigation ----
 
+    /**
+     * Navigate using BACK door — pops from history instead of pushing.
+     */
+    public Room navigateBack() {
+        if (currentPlayer == null) return null;
+        String previousRoom = currentPlayer.popRoomFromHistory();
+        if (previousRoom == null) {
+            // Fallback: go to hub if history is empty
+            previousRoom = Constants.HUB_ROOM_ID;
+        }
+        // Use internal navigate with isBackNavigation=true so we don't push onto history
+        return navigateToRoomInternal(previousRoom, true);
+    }
+
     public Room navigateToRoom(String roomId) {
+        return navigateToRoomInternal(roomId, false);
+    }
+
+    private Room navigateToRoomInternal(String roomId, boolean isBackNavigation) {
         Room room = loadOrGenerateRoom(roomId);
 
         if (currentPlayer != null) {
-            // Track previous room for true 1:1 BACK navigation
             String oldRoomId = currentPlayer.getCurrentRoomId();
+
+            // Only push to history when moving forward (not going back)
+            if (!isBackNavigation && oldRoomId != null && !oldRoomId.equals(roomId)) {
+                currentPlayer.pushRoomToHistory(oldRoomId);
+            }
+
+            // Update previousRoomId for legacy compatibility
             if (oldRoomId != null && !oldRoomId.equals(roomId)) {
                 currentPlayer.setPreviousRoomId(oldRoomId);
             }
 
-            // Override the BACK door to point to the actual previous room
-            if (room != null && currentPlayer.getPreviousRoomId() != null
-                    && !RoomIdHelper.isHub(roomId)) {
-                room.getDoors().put("BACK", currentPlayer.getPreviousRoomId());
+            // Set BACK door based on top of history stack
+            if (room != null && !RoomIdHelper.isHub(roomId)) {
+                java.util.List<String> history = currentPlayer.getRoomHistory();
+                String backTarget = history.isEmpty() ? Constants.HUB_ROOM_ID
+                        : history.get(history.size() - 1);
+                room.getDoors().put("BACK", backTarget);
                 roomFileManager.saveRoom(room);
             }
 
@@ -185,6 +211,7 @@ public class GameRepository {
             // Stamina: consume on movement, regen at hub/waypoint
             if (RoomIdHelper.isHub(roomId)) {
                 currentPlayer.setRoomsVisitedSinceHub(0);
+                currentPlayer.getRoomHistory().clear(); // Clear history at hub
                 currentPlayer.setStamina(currentPlayer.getMaxStamina()); // Full restore at hub
             } else if (room != null && room.isWaypoint()) {
                 currentPlayer.setStamina(currentPlayer.getMaxStamina()); // Full restore at waypoint

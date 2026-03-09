@@ -70,9 +70,9 @@ public class NoteFragment extends Fragment {
             repo.saveCurrentRoom();
             repo.savePlayer();
 
-            // Sync notes to cloud
+            // Sync individual note to cloud (matches Apps Script saveNote action)
             CloudSyncManager syncManager = new CloudSyncManager();
-            syncManager.syncNotesToCloud(room.getRoomId(), room.getPlayerNotes(), null);
+            syncManager.syncNoteToCloud(room.getRoomId(), player.getAccessCode(), text, null);
 
             notes.add(note);
             adapter.notifyItemInserted(notes.size() - 1);

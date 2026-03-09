@@ -115,11 +115,25 @@ public class AppsScriptClient {
     }
 
     public SyncResult saveNotes(String roomId, String notesJson) {
+        // Legacy bulk method — kept for compatibility but unused
         try {
             JSONObject body = new JSONObject();
             body.put("action", "saveNotes");
             body.put("roomId", roomId);
             body.put("data", notesJson);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult saveNote(String roomId, String accessCode, String noteText) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "saveNote");
+            body.put("roomId", roomId);
+            body.put("code", accessCode);
+            body.put("note", noteText);
             return execute(body);
         } catch (Exception e) {
             return new SyncResult(false, "Error: " + e.getMessage(), null);

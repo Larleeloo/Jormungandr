@@ -122,6 +122,32 @@ public class GameActivity extends AppCompatActivity {
         showFragment(new RoomFragment(), "room");
     }
 
+    public void navigateBack() {
+        GameRepository repo = GameRepository.getInstance(this);
+        Player player = repo.getCurrentPlayer();
+
+        // Upload the room we're LEAVING to cloud (lazy sync)
+        Room leavingRoom = repo.getCurrentRoom();
+        if (leavingRoom != null && player != null && cloudSyncManager != null) {
+            cloudSyncManager.syncRoomToCloud(leavingRoom, null);
+        }
+
+        // Pop from history stack instead of using BACK door target
+        Room room = repo.navigateBack();
+        updateHud();
+
+        if (player != null && cloudSyncManager != null) {
+            showSyncStatus(true, "Syncing...");
+            cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
+                    showSyncStatus(success, message));
+            if (room != null) {
+                cloudSyncManager.syncRoomFromCloud(room.getRoomId(), null);
+            }
+        }
+
+        showFragment(new RoomFragment(), "room");
+    }
+
     public void startCombat(String creatureDefId, int level, int hp) {
         CombatFragment combat = CombatFragment.newInstance(creatureDefId, level, hp);
         showFragment(combat, "combat");

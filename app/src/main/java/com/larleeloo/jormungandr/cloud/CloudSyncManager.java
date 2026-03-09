@@ -121,7 +121,20 @@ public class CloudSyncManager {
     }
 
     /**
-     * Upload notes for a room to Drive (async).
+     * Upload a single note for a room to Drive (async).
+     * Matches the Apps Script saveNote action: {roomId, code, note}.
+     */
+    public void syncNoteToCloud(String roomId, String accessCode, String noteText, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.saveNote(roomId, accessCode, noteText);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * @deprecated Use {@link #syncNoteToCloud} for individual notes instead.
      */
     public void syncNotesToCloud(String roomId, List<PlayerNote> notes, SyncCallback callback) {
         executor.execute(() -> {
@@ -134,11 +147,38 @@ public class CloudSyncManager {
     }
 
     /**
-     * Download notes for a room from Drive (async).
+     * Download notes for a room from Drive (async) and merge into local room.
      */
     public void syncNotesFromCloud(String roomId, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.getNotes(roomId);
+            if (result.isSuccess() && result.getData() != null) {
+                GameRepository repo = GameRepository.getInstance();
+                if (repo != null) {
+                    Room localRoom = repo.getCurrentRoom();
+                    if (localRoom != null && localRoom.getRoomId() != null
+                            && localRoom.getRoomId().equals(roomId)) {
+                        List<PlayerNote> cloudNotes = JsonHelper.listFromJson(
+                                result.getData(), PlayerNote.class);
+                        if (cloudNotes != null) {
+                            for (PlayerNote cloudNote : cloudNotes) {
+                                boolean exists = false;
+                                for (PlayerNote localNote : localRoom.getPlayerNotes()) {
+                                    if (localNote.getText().equals(cloudNote.getText())
+                                            && localNote.getPlayerName().equals(cloudNote.getPlayerName())) {
+                                        exists = true;
+                                        break;
+                                    }
+                                }
+                                if (!exists) {
+                                    localRoom.getPlayerNotes().add(cloudNote);
+                                }
+                            }
+                            repo.saveCurrentRoom();
+                        }
+                    }
+                }
+            }
             if (callback != null) {
                 mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
             }

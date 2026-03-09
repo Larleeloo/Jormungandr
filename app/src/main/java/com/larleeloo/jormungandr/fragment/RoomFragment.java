@@ -107,7 +107,11 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             return;
         }
 
-        activity.navigateToRoom(targetRoomId);
+        if (direction == Direction.BACK) {
+            activity.navigateBack();
+        } else {
+            activity.navigateToRoom(targetRoomId);
+        }
     }
 
     @Override
