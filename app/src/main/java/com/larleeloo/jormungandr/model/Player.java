@@ -34,6 +34,7 @@ public class Player {
     private List<PlayerNote> notes;
     private int roomsVisitedSinceHub;
     private String previousRoomId;
+    private List<String> roomHistory;
 
     public Player() {
         this.version = Constants.GAME_VERSION;
@@ -59,6 +60,7 @@ public class Player {
         this.perks = new ArrayList<>();
         this.notes = new ArrayList<>();
         this.roomsVisitedSinceHub = 0;
+        this.roomHistory = new ArrayList<>();
 
         // Initialize inventory slots
         for (int i = 0; i < Constants.MIN_INVENTORY_SLOTS; i++) {
@@ -240,4 +242,21 @@ public class Player {
     public void setRoomsVisitedSinceHub(int roomsVisitedSinceHub) { this.roomsVisitedSinceHub = roomsVisitedSinceHub; }
     public String getPreviousRoomId() { return previousRoomId; }
     public void setPreviousRoomId(String previousRoomId) { this.previousRoomId = previousRoomId; }
+    public List<String> getRoomHistory() {
+        if (roomHistory == null) roomHistory = new ArrayList<>();
+        return roomHistory;
+    }
+    public void setRoomHistory(List<String> roomHistory) { this.roomHistory = roomHistory; }
+
+    public void pushRoomToHistory(String roomId) {
+        if (roomHistory == null) roomHistory = new ArrayList<>();
+        // Don't push duplicates at the top
+        if (!roomHistory.isEmpty() && roomHistory.get(roomHistory.size() - 1).equals(roomId)) return;
+        roomHistory.add(roomId);
+    }
+
+    public String popRoomFromHistory() {
+        if (roomHistory == null || roomHistory.isEmpty()) return null;
+        return roomHistory.remove(roomHistory.size() - 1);
+    }
 }
