@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.larleeloo.jormungandr.R;
+import com.larleeloo.jormungandr.asset.GameAssetManager;
 import com.larleeloo.jormungandr.model.ActionType;
 import com.larleeloo.jormungandr.model.ItemDef;
 import com.larleeloo.jormungandr.view.PlaceholderRenderer;
@@ -54,11 +55,21 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ActionView
     public void onBindViewHolder(@NonNull ActionViewHolder holder, int position) {
         CombatAction action = actions.get(position);
 
-        // Draw item icon
-        Bitmap bmp = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bmp);
-        PlaceholderRenderer.drawShape(canvas, action.item.getPlaceholderShape(),
-                action.item.getPlaceholderColorInt(), 2, 2, 44, 44);
+        // Try loading actual sprite, fall back to placeholder
+        Bitmap spriteBmp = null;
+        if (action.item.getSpritePath() != null) {
+            spriteBmp = GameAssetManager.getInstance(holder.itemView.getContext())
+                    .loadSprite(action.item.getSpritePath());
+        }
+        Bitmap bmp;
+        if (spriteBmp != null) {
+            bmp = Bitmap.createScaledBitmap(spriteBmp, 48, 48, true);
+        } else {
+            bmp = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bmp);
+            PlaceholderRenderer.drawShape(canvas, action.item.getPlaceholderShape(),
+                    action.item.getPlaceholderColorInt(), 2, 2, 44, 44);
+        }
         holder.actionIcon.setImageBitmap(bmp);
 
         holder.itemName.setText(action.item.getDisplayName());
