@@ -131,8 +131,12 @@ public class CombatCanvasView extends SurfaceView implements SurfaceHolder.Callb
                         .loadSprite(creature.getDef().getSpritePath());
             }
             if (creatureBmp != null) {
-                RectF destRect = new RectF(creatureX, creatureY,
-                        creatureX + creatureW, creatureY + creatureH);
+                // Render sprite as square using the smaller dimension
+                float side = Math.min(creatureW, creatureH);
+                float cx = creatureX + creatureW / 2f;
+                float cy = creatureY + creatureH / 2f;
+                RectF destRect = new RectF(cx - side / 2f, cy - side / 2f,
+                        cx + side / 2f, cy + side / 2f);
                 canvas.drawBitmap(creatureBmp, null, destRect, null);
             } else {
                 int creatureColor = creature.getDef() != null ?

@@ -330,13 +330,16 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     if (obj.getQuantity() <= 0) continue;
                     shape = "circle";
                     color = 0xFFFFD700;
-                    // Look up ItemDef for sprite and color
+                    // Look up ItemDef for sprite, shape, and color
                     if (obj.getItemId() != null) {
                         ItemDef iDef = repo.getItemRegistry()
                                 .getItem(obj.getItemId());
                         if (iDef != null) {
                             spritePath = iDef.getSpritePath();
                             color = iDef.getPlaceholderColorInt();
+                            if (iDef.getPlaceholderShape() != null) {
+                                shape = iDef.getPlaceholderShape();
+                            }
                         }
                     }
                     break;
@@ -359,7 +362,12 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                 objBmp = assetManager.loadSpriteById(obj.getSpriteId(), "entities/hostile");
             }
             if (objBmp != null) {
-                RectF destRect = new RectF(objX, objY, objX + objW, objY + objH);
+                // Render sprites as square using the smaller dimension
+                float side = Math.min(objW, objH);
+                float cx = objX + objW / 2f;
+                float cy = objY + objH / 2f;
+                RectF destRect = new RectF(cx - side / 2f, cy - side / 2f,
+                        cx + side / 2f, cy + side / 2f);
                 canvas.drawBitmap(objBmp, null, destRect, null);
             } else {
                 PlaceholderRenderer.drawShape(canvas, shape, color, objX, objY, objW, objH);
