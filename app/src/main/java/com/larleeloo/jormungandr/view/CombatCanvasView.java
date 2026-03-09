@@ -1,6 +1,7 @@
 package com.larleeloo.jormungandr.view;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -9,6 +10,7 @@ import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import com.larleeloo.jormungandr.asset.GameAssetManager;
 import com.larleeloo.jormungandr.model.BiomeType;
 import com.larleeloo.jormungandr.model.CombatCreature;
 import com.larleeloo.jormungandr.model.Player;
@@ -122,10 +124,22 @@ public class CombatCanvasView extends SurfaceView implements SurfaceHolder.Callb
             float creatureW = w * 0.35f;
             float creatureH = h * 0.3f;
 
-            int creatureColor = creature.getDef() != null ?
-                    creature.getDef().getPlaceholderColorInt() : 0xFFCC0000;
-            PlaceholderRenderer.drawCreature(canvas, creatureColor,
-                    creatureX, creatureY, creatureW, creatureH);
+            // Try loading actual sprite, fall back to placeholder
+            Bitmap creatureBmp = null;
+            if (creature.getDef() != null && creature.getDef().getSpritePath() != null) {
+                creatureBmp = GameAssetManager.getInstance(getContext())
+                        .loadSprite(creature.getDef().getSpritePath());
+            }
+            if (creatureBmp != null) {
+                RectF destRect = new RectF(creatureX, creatureY,
+                        creatureX + creatureW, creatureY + creatureH);
+                canvas.drawBitmap(creatureBmp, null, destRect, null);
+            } else {
+                int creatureColor = creature.getDef() != null ?
+                        creature.getDef().getPlaceholderColorInt() : 0xFFCC0000;
+                PlaceholderRenderer.drawCreature(canvas, creatureColor,
+                        creatureX, creatureY, creatureW, creatureH);
+            }
 
             // Creature name and HP bar
             String creatureName = creature.getDef() != null ?

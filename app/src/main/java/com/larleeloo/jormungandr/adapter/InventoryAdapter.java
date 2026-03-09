@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.larleeloo.jormungandr.R;
+import com.larleeloo.jormungandr.asset.GameAssetManager;
 import com.larleeloo.jormungandr.data.ItemRegistry;
 import com.larleeloo.jormungandr.model.InventorySlot;
 import com.larleeloo.jormungandr.model.ItemDef;
@@ -61,13 +62,24 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.Slot
         } else {
             ItemDef item = itemRegistry.getItem(slot.getItemId());
             if (item != null) {
-                // Draw placeholder icon
-                Bitmap bmp = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888);
-                Canvas canvas = new Canvas(bmp);
-                PlaceholderRenderer.drawShape(canvas, item.getPlaceholderShape(),
-                        item.getPlaceholderColorInt(), 4, 4, 56, 56);
+                // Try loading actual sprite, fall back to placeholder
+                Bitmap spriteBmp = null;
+                if (item.getSpritePath() != null) {
+                    spriteBmp = GameAssetManager.getInstance(holder.itemView.getContext())
+                            .loadSprite(item.getSpritePath());
+                }
+                Bitmap bmp;
+                if (spriteBmp != null) {
+                    bmp = Bitmap.createScaledBitmap(spriteBmp, 64, 64, true);
+                } else {
+                    bmp = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888);
+                    Canvas canvas = new Canvas(bmp);
+                    PlaceholderRenderer.drawShape(canvas, item.getPlaceholderShape(),
+                            item.getPlaceholderColorInt(), 4, 4, 56, 56);
+                }
                 // Add rarity glow
-                PlaceholderRenderer.drawRarityGlow(canvas, item.getRarityEnum().getGlowColor(),
+                Canvas glowCanvas = new Canvas(bmp);
+                PlaceholderRenderer.drawRarityGlow(glowCanvas, item.getRarityEnum().getGlowColor(),
                         2, 2, 60, 60, 3);
                 holder.slotIcon.setImageBitmap(bmp);
                 holder.slotQuantity.setText(slot.getQuantity() > 1 ?

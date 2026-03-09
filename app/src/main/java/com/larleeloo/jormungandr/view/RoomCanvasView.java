@@ -12,6 +12,7 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import com.larleeloo.jormungandr.asset.GameAssetManager;
 import com.larleeloo.jormungandr.model.BiomeType;
 import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.Room;
@@ -324,7 +325,19 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     break;
             }
 
-            PlaceholderRenderer.drawShape(canvas, shape, color, objX, objY, objW, objH);
+            // Try loading actual sprite, fall back to placeholder
+            Bitmap objBmp = null;
+            String spriteId = obj.getSpriteId();
+            if (spriteId != null) {
+                objBmp = GameAssetManager.getInstance(getContext())
+                        .loadSpriteById(spriteId, "entities/hostile");
+            }
+            if (objBmp != null) {
+                RectF destRect = new RectF(objX, objY, objX + objW, objY + objH);
+                canvas.drawBitmap(objBmp, null, destRect, null);
+            } else {
+                PlaceholderRenderer.drawShape(canvas, shape, color, objX, objY, objW, objH);
+            }
 
             objectHitBoxes.add(new ObjectHitBox(obj,
                     new RectF(objX, objY, objX + objW, objY + objH)));
@@ -441,6 +454,8 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         String[] paths = {
                 "backgrounds/" + assetId + ".png",
                 "backgrounds/" + assetId + ".gif",
+                "backgrounds/" + assetId + ".jpg",
+                "backgrounds/" + assetId + ".webp",
         };
         for (String path : paths) {
             try {
