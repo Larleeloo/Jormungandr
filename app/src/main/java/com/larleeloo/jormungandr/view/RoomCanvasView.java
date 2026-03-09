@@ -13,8 +13,11 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import com.larleeloo.jormungandr.asset.GameAssetManager;
+import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.model.BiomeType;
+import com.larleeloo.jormungandr.model.CreatureDef;
 import com.larleeloo.jormungandr.model.Direction;
+import com.larleeloo.jormungandr.model.ItemDef;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.model.RoomObject;
 import com.larleeloo.jormungandr.util.Constants;
@@ -283,6 +286,9 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         float roomW = roomRight - roomLeft;
         float roomH = roomBottom - roomTop;
 
+        GameAssetManager assetManager = GameAssetManager.getInstance(getContext());
+        GameRepository repo = GameRepository.getInstance(getContext());
+
         for (RoomObject obj : currentRoom.getObjects()) {
             // Skip hidden objects (e.g., concealed traps)
             if (obj.isHidden()) continue;
@@ -294,6 +300,7 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
 
             String shape;
             int color;
+            String spritePath = null;
 
             switch (obj.getType()) {
                 case "chest":
@@ -304,6 +311,15 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     if (!obj.isAlive()) continue;
                     shape = "creature";
                     color = 0xFFCC0000;
+                    // Look up CreatureDef for sprite and color
+                    if (obj.getCreatureDefId() != null) {
+                        CreatureDef cDef = repo.getCreatureRegistry()
+                                .getCreature(obj.getCreatureDefId());
+                        if (cDef != null) {
+                            spritePath = cDef.getSpritePath();
+                            color = cDef.getPlaceholderColorInt();
+                        }
+                    }
                     break;
                 case "trap":
                     if (obj.isTriggered()) continue;
@@ -314,6 +330,15 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     if (obj.getQuantity() <= 0) continue;
                     shape = "circle";
                     color = 0xFFFFD700;
+                    // Look up ItemDef for sprite and color
+                    if (obj.getItemId() != null) {
+                        ItemDef iDef = repo.getItemRegistry()
+                                .getItem(obj.getItemId());
+                        if (iDef != null) {
+                            spritePath = iDef.getSpritePath();
+                            color = iDef.getPlaceholderColorInt();
+                        }
+                    }
                     break;
                 case "decoration":
                     shape = "rectangle";
@@ -325,12 +350,13 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     break;
             }
 
-            // Try loading actual sprite, fall back to placeholder
+            // Try loading actual sprite via spritePath or spriteId, fall back to placeholder
             Bitmap objBmp = null;
-            String spriteId = obj.getSpriteId();
-            if (spriteId != null) {
-                objBmp = GameAssetManager.getInstance(getContext())
-                        .loadSpriteById(spriteId, "entities/hostile");
+            if (spritePath != null) {
+                objBmp = assetManager.loadSprite(spritePath);
+            }
+            if (objBmp == null && obj.getSpriteId() != null) {
+                objBmp = assetManager.loadSpriteById(obj.getSpriteId(), "entities/hostile");
             }
             if (objBmp != null) {
                 RectF destRect = new RectF(objX, objY, objX + objW, objY + objH);
