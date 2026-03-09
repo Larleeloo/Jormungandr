@@ -330,13 +330,16 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     if (obj.getQuantity() <= 0) continue;
                     shape = "circle";
                     color = 0xFFFFD700;
-                    // Look up ItemDef for sprite and color
+                    // Look up ItemDef for sprite, shape, and color
                     if (obj.getItemId() != null) {
                         ItemDef iDef = repo.getItemRegistry()
                                 .getItem(obj.getItemId());
                         if (iDef != null) {
                             spritePath = iDef.getSpritePath();
                             color = iDef.getPlaceholderColorInt();
+                            if (iDef.getPlaceholderShape() != null) {
+                                shape = iDef.getPlaceholderShape();
+                            }
                         }
                     }
                     break;
