@@ -397,7 +397,9 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         BiomeType biome = BiomeType.fromRegion(currentRoom.getRegion());
         hudPaint.setColor(0xAAFFFFFF);
         hudPaint.setTextSize(20f);
-        canvas.drawText(biome.getDisplayName() + " - Zone " + currentRoom.getZone(),
+        boolean isTrunk = RoomIdHelper.isTrunkRoom(currentRoom.getRoomId());
+        String depthLabel = isTrunk ? "Trunk" : "Branch (Tier " + currentRoom.getZone() + ")";
+        canvas.drawText(biome.getDisplayName() + " - " + depthLabel,
                 20, canvasHeight - 48, hudPaint);
 
         // Waypoint indicator
@@ -416,28 +418,43 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
 
     private void drawWaypointProximity(Canvas canvas) {
         int roomNumber = RoomIdHelper.getRoomNumber(currentRoom.getRoomId());
-        int waypointId = Constants.WAYPOINT_ROOM_ID;
-        int distance = Math.abs(roomNumber - waypointId);
+
+        // For trunk rooms, distance is to nearest waypoint interval multiple
+        // For branch rooms, they're off the trunk so show "Off Trunk"
+        int distance;
+        if (RoomIdHelper.isTrunkRoom(roomNumber)) {
+            int interval = Constants.WAYPOINT_INTERVAL;
+            if (interval > 0 && roomNumber > 0) {
+                int nearest = Math.round((float) roomNumber / interval) * interval;
+                if (nearest == 0) nearest = interval;
+                distance = Math.abs(roomNumber - nearest);
+            } else {
+                distance = roomNumber;
+            }
+        } else {
+            // Branch rooms: estimate distance as branch depth + some trunk distance
+            distance = 999; // far from any waypoint
+        }
 
         String label;
         int color;
-        if (distance <= 5) {
+        if (distance <= 2) {
             label = "SCORCHING";
             color = 0xFFFF0000;
-        } else if (distance <= 20) {
+        } else if (distance <= 5) {
             label = "HOT";
             color = 0xFFFF4400;
-        } else if (distance <= 50) {
+        } else if (distance <= 10) {
             label = "WARM";
             color = 0xFFFF8800;
-        } else if (distance <= 150) {
+        } else if (distance <= 20) {
             label = "COOL";
             color = 0xFF4488FF;
-        } else if (distance <= 400) {
+        } else if (distance <= 40) {
             label = "COLD";
             color = 0xFF0044FF;
         } else {
-            label = "FREEZING";
+            label = RoomIdHelper.isTrunkRoom(roomNumber) ? "FREEZING" : "OFF TRUNK";
             color = 0xFF0000CC;
         }
 

@@ -166,11 +166,11 @@ public class MapCanvasView extends SurfaceView implements SurfaceHolder.Callback
                     for (int i = 0; i < rooms.size(); i++) {
                         String roomId = rooms.get(i);
                         int roomNum = RoomIdHelper.getRoomNumber(roomId);
-                        int zone = RoomIdHelper.getZone(roomNum);
+                        int tier = RoomIdHelper.getDifficultyTier(region, roomNum);
 
-                        // Position room relative to region center, farther for higher zones
+                        // Position room relative to region center, farther for higher tiers
                         float roomAngle = radians + (float)(i * 0.3 - rooms.size() * 0.15);
-                        float roomDist = zone * 20f;
+                        float roomDist = tier * 20f;
                         float rx = centerX + (float) Math.cos(roomAngle) * roomDist;
                         float ry = centerY + (float) Math.sin(roomAngle) * roomDist;
 
