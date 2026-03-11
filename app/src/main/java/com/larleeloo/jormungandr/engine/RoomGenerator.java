@@ -34,10 +34,10 @@ public class RoomGenerator {
      */
     public Room generateRoom(int region, int roomNumber, int playerLevel) {
         String roomId = RoomIdHelper.makeRoomId(region, roomNumber);
-        int zone = RoomIdHelper.getZone(roomNumber);
+        int difficultyTier = RoomIdHelper.getDifficultyTier(region, roomNumber);
         SeededRandom rng = new SeededRandom(SeededRandom.hashSeed(region, roomNumber));
 
-        Room room = new Room(roomId, region, zone);
+        Room room = new Room(roomId, region, difficultyTier);
         room.setBiome(BiomeType.fromRegion(region).name().toLowerCase());
 
         // Set background
@@ -59,9 +59,9 @@ public class RoomGenerator {
         if (room.isWaypoint()) {
             generateWaypointRoom(room, rng);
         } else if (isCreatureDen) {
-            generateCreatureDenRoom(room, rng, region, zone, playerLevel);
+            generateCreatureDenRoom(room, rng, region, difficultyTier, playerLevel);
         } else {
-            generateEmptyRoom(room, rng, region, zone);
+            generateEmptyRoom(room, rng, region, difficultyTier);
         }
 
         room.setFirstVisitedAt(System.currentTimeMillis() / 1000);
@@ -93,11 +93,11 @@ public class RoomGenerator {
         return hub;
     }
 
-    private void generateEmptyRoom(Room room, SeededRandom rng, int region, int zone) {
+    private void generateEmptyRoom(Room room, SeededRandom rng, int region, int tier) {
         // Chests
         int numChests = rng.nextIntRange(Constants.MIN_CHESTS_PER_ROOM, Constants.MAX_CHESTS_PER_ROOM);
         for (int i = 0; i < numChests; i++) {
-            List<InventorySlot> contents = lootGenerator.generateChestLoot(rng, region, zone);
+            List<InventorySlot> contents = lootGenerator.generateChestLoot(rng, region, tier);
             float x = rng.nextFloatRange(0.15f, 0.75f);
             float y = rng.nextFloatRange(0.5f, 0.75f);
             room.getObjects().add(RoomObject.createChest(
@@ -105,7 +105,7 @@ public class RoomGenerator {
         }
 
         // Floor items
-        List<InventorySlot> floorItems = lootGenerator.generateFloorItems(rng, zone);
+        List<InventorySlot> floorItems = lootGenerator.generateFloorItems(rng, tier);
         for (int i = 0; i < floorItems.size(); i++) {
             InventorySlot item = floorItems.get(i);
             float x = rng.nextFloatRange(0.1f, 0.8f);
@@ -114,18 +114,18 @@ public class RoomGenerator {
                     "floor_" + i, item.getItemId(), item.getQuantity(), x, y));
         }
 
-        // Traps (small chance)
-        if (zone >= 2 && rng.nextDouble() < 0.15) {
+        // Traps (small chance, higher tiers more likely)
+        if (tier >= 2 && rng.nextDouble() < 0.15) {
             float x = rng.nextFloatRange(0.2f, 0.7f);
             float y = rng.nextFloatRange(0.5f, 0.75f);
             String trapType = rng.nextBoolean() ? "spike" : "poison_gas";
-            int damage = rng.nextIntRange(3, 5 + zone * 2);
+            int damage = rng.nextIntRange(3, 5 + tier * 2);
             room.getObjects().add(RoomObject.createTrap("trap_0", trapType, damage, x, y));
         }
 
         // Hidden items (only revealed by torch)
         if (rng.nextDouble() < 0.20) {
-            List<InventorySlot> hiddenLoot = lootGenerator.generateChestLoot(rng, region, zone);
+            List<InventorySlot> hiddenLoot = lootGenerator.generateChestLoot(rng, region, tier);
             for (int i = 0; i < hiddenLoot.size(); i++) {
                 InventorySlot item = hiddenLoot.get(i);
                 float hx = rng.nextFloatRange(0.1f, 0.8f);
@@ -142,7 +142,7 @@ public class RoomGenerator {
     }
 
     private void generateCreatureDenRoom(Room room, SeededRandom rng, int region,
-                                          int zone, int playerLevel) {
+                                          int tier, int playerLevel) {
         // Main creature
         CreatureDef creatureDef = creatureRegistry.getRandomCreatureForRegion(rng, region);
         if (creatureDef != null) {
@@ -158,7 +158,7 @@ public class RoomGenerator {
 
         // Creature dens still have some loot
         if (rng.nextDouble() < 0.5) {
-            List<InventorySlot> contents = lootGenerator.generateChestLoot(rng, region, zone);
+            List<InventorySlot> contents = lootGenerator.generateChestLoot(rng, region, tier);
             float x = rng.nextFloatRange(0.6f, 0.8f);
             float y = rng.nextFloatRange(0.55f, 0.7f);
             room.getObjects().add(RoomObject.createChest(

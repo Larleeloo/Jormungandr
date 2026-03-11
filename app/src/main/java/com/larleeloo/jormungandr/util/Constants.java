@@ -18,14 +18,15 @@ public final class Constants {
     // World
     public static final int NUM_REGIONS = 8;
     public static final int ROOMS_PER_REGION = 10000;
-    public static final int NUM_ZONES = 5;
 
-    // Zone room counts (total = 10,000)
-    public static final int ZONE_1_ROOMS = 500;
-    public static final int ZONE_2_ROOMS = 1500;
-    public static final int ZONE_3_ROOMS = 2000;
-    public static final int ZONE_4_ROOMS = 2500;
-    public static final int ZONE_5_ROOMS = 3500;
+    // Trunk-and-branch topology
+    public static final int TRUNK_LENGTH = 250;
+    public static final int BRANCH_ID_START = TRUNK_LENGTH;
+    public static final int MAX_BRANCH_DEPTH = 40;
+    public static final double BRANCH_CHANCE = 0.35;
+    public static final double SUB_BRANCH_CHANCE = 0.15;
+    public static final double CROSS_REGION_CHANCE = 0.03;
+    public static final int WAYPOINT_INTERVAL = 50;
 
     // Room generation
     public static final double CREATURE_DEN_CHANCE = 0.20;
@@ -91,8 +92,8 @@ public final class Constants {
     public static final double BASE_ENCOUNTER_CHANCE = 0.05;
     public static final double ENCOUNTER_CHANCE_PER_ROOM = 0.005;
 
-    // Waypoint room interval (roughly 1 per region)
-    public static final int WAYPOINT_ROOM_ID = 500;
+    // Waypoint room interval (on trunk rooms at multiples of WAYPOINT_INTERVAL)
+    public static final int WAYPOINT_ROOM_ID = 500; // legacy, kept for save compat
 
     // World seed for deterministic generation
     public static final long WORLD_SEED = 0x4A6F726D756E4CL;
