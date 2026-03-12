@@ -5,9 +5,14 @@ import android.os.Looper;
 
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.data.JsonHelper;
+import com.larleeloo.jormungandr.engine.WorldMesh;
+import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.PlayerNote;
 import com.larleeloo.jormungandr.model.Room;
+import com.larleeloo.jormungandr.util.RoomIdHelper;
+
+import java.util.Map;
 
 import java.util.List;
 
@@ -83,7 +88,10 @@ public class CloudSyncManager {
     }
 
     /**
-     * Download room data from Drive (async). Merges notes from cloud into local room.
+     * Download room data from Drive (async). Replaces local room content with
+     * cloud data while preserving door connections from the pre-built WorldMesh.
+     * Cloud room data (objects, notes, visit info) takes priority over local data,
+     * but the mesh-defined room layout is always authoritative for door connections.
      */
     public void syncRoomFromCloud(String roomId, SyncCallback callback) {
         executor.execute(() -> {
@@ -92,22 +100,40 @@ public class CloudSyncManager {
                 Room cloudRoom = JsonHelper.fromJson(result.getData(), Room.class);
                 GameRepository repo = GameRepository.getInstance();
                 if (cloudRoom != null && repo != null) {
+                    // Apply mesh doors so cloud data doesn't override the linked list layout
+                    int region = RoomIdHelper.getRegion(roomId);
+                    int roomNumber = RoomIdHelper.getRoomNumber(roomId);
+                    Map<Direction, String> meshDoors = WorldMesh.getInstance()
+                            .getNeighbors(region, roomNumber);
+                    if (!meshDoors.isEmpty()) {
+                        cloudRoom.getDoors().clear();
+                        for (Map.Entry<Direction, String> entry : meshDoors.entrySet()) {
+                            cloudRoom.addDoor(entry.getKey(), entry.getValue());
+                        }
+                    }
+
                     Room localRoom = repo.getCurrentRoom();
-                    // Merge cloud notes into local room (notes are the main cross-device data)
                     if (localRoom != null && localRoom.getRoomId() != null
-                            && localRoom.getRoomId().equals(roomId)
-                            && cloudRoom.getPlayerNotes() != null) {
-                        for (PlayerNote cloudNote : cloudRoom.getPlayerNotes()) {
-                            boolean exists = false;
-                            for (PlayerNote localNote : localRoom.getPlayerNotes()) {
-                                if (localNote.getText().equals(cloudNote.getText())
-                                        && localNote.getPlayerName().equals(cloudNote.getPlayerName())) {
-                                    exists = true;
-                                    break;
+                            && localRoom.getRoomId().equals(roomId)) {
+                        // Replace local room content with cloud data
+                        localRoom.setObjects(cloudRoom.getObjects());
+                        localRoom.setFirstVisitedBy(cloudRoom.getFirstVisitedBy());
+                        localRoom.setFirstVisitedAt(cloudRoom.getFirstVisitedAt());
+
+                        // Merge notes (additive — keep both local and cloud notes)
+                        if (cloudRoom.getPlayerNotes() != null) {
+                            for (PlayerNote cloudNote : cloudRoom.getPlayerNotes()) {
+                                boolean exists = false;
+                                for (PlayerNote localNote : localRoom.getPlayerNotes()) {
+                                    if (localNote.getText().equals(cloudNote.getText())
+                                            && localNote.getPlayerName().equals(cloudNote.getPlayerName())) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (!exists) {
-                                localRoom.getPlayerNotes().add(cloudNote);
+                                if (!exists) {
+                                    localRoom.getPlayerNotes().add(cloudNote);
+                                }
                             }
                         }
                         repo.saveCurrentRoom();
