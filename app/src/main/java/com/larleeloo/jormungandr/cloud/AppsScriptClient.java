@@ -140,6 +140,39 @@ public class AppsScriptClient {
         }
     }
 
+    public SyncResult adminResetAllRooms(String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "adminResetAllRooms");
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult adminResetAllNotes(String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "adminResetAllNotes");
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult adminResetAllPlayers(String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "adminResetAllPlayers");
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public boolean isConfigured() {
         return scriptUrl != null && !scriptUrl.isEmpty();
     }

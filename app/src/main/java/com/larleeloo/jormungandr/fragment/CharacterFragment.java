@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 
 import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.activity.GameActivity;
+import com.larleeloo.jormungandr.cloud.AccessCodeValidator;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.engine.PlayerLevelManager;
 import com.larleeloo.jormungandr.model.Player;
@@ -57,6 +58,20 @@ public class CharacterFragment extends Fragment {
                 "Better shop prices. Improves note visibility to others.");
         setupStatRow(view.findViewById(R.id.stat_dexterity), "Dexterity", "dexterity",
                 "Increases dodge chance. Boosts ranged damage and flee success.");
+
+        // Show admin panel button for admin access codes
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        Player player = repo.getCurrentPlayer();
+        Button btnAdmin = view.findViewById(R.id.btn_admin_panel);
+        if (player != null && AccessCodeValidator.isAdminCode(player.getAccessCode())) {
+            btnAdmin.setVisibility(View.VISIBLE);
+            btnAdmin.setOnClickListener(v -> {
+                GameActivity activity = (GameActivity) getActivity();
+                if (activity != null) {
+                    activity.showFragment(new AdminFragment(), "admin");
+                }
+            });
+        }
 
         refreshDisplay();
     }

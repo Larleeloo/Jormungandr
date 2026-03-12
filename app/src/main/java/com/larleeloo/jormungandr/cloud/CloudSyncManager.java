@@ -254,6 +254,42 @@ public class CloudSyncManager {
         });
     }
 
+    /**
+     * Admin: Reset all room data in the cloud (async).
+     */
+    public void adminResetAllRooms(String accessCode, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.adminResetAllRooms(accessCode);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Admin: Reset all note data in the cloud (async).
+     */
+    public void adminResetAllNotes(String accessCode, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.adminResetAllNotes(accessCode);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Admin: Reset all player save data in the cloud (async).
+     */
+    public void adminResetAllPlayers(String accessCode, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.adminResetAllPlayers(accessCode);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
     public void shutdown() {
         executor.shutdown();
     }

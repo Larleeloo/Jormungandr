@@ -35,6 +35,17 @@ public class AccessCodeValidator {
         return code != null && VALID_CODES.contains(code.toUpperCase());
     }
 
+    private static final Set<String> ADMIN_CODES = new HashSet<>(Arrays.asList(
+            "JORM-ALPHA-001", "JORM-ALPHA-002", "JORM-ALPHA-003"
+    ));
+
+    /**
+     * Check if a code has admin privileges (reset capabilities).
+     */
+    public static boolean isAdminCode(String code) {
+        return code != null && ADMIN_CODES.contains(code.toUpperCase());
+    }
+
     public static Set<String> getValidCodes() {
         return VALID_CODES;
     }

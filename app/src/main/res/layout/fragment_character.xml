@@ -139,5 +139,16 @@
                 android:id="@+id/stat_dexterity" />
         </LinearLayout>
 
+        <!-- Admin Panel Button (only visible for admin access codes) -->
+        <Button
+            android:id="@+id/btn_admin_panel"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Admin Panel"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#8B0000"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>
