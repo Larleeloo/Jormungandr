@@ -61,6 +61,9 @@ for (var i = 1; i <= 25; i++) {
   VALID_CODES.push("JORM-ALPHA-" + ("00" + i).slice(-3));
 }
 
+// Admin access codes with reset privileges
+var ADMIN_CODES = ["JORM-ALPHA-001", "JORM-ALPHA-002", "JORM-ALPHA-003"];
+
 // ========== ENTRY POINT ==========
 
 function doPost(e) {
@@ -87,6 +90,12 @@ function doPost(e) {
         return jsonResponse(handleGetNotes(body));
       case "saveNote":
         return jsonResponse(handleSaveNote(body));
+      case "adminResetAllRooms":
+        return jsonResponse(handleAdminResetAllRooms(body));
+      case "adminResetAllNotes":
+        return jsonResponse(handleAdminResetAllNotes(body));
+      case "adminResetAllPlayers":
+        return jsonResponse(handleAdminResetAllPlayers(body));
       default:
         return jsonResponse({ success: false, message: "Unknown action: " + action });
     }
@@ -282,6 +291,51 @@ function handleSaveNote(body) {
   }
 
   return { success: true, message: "Note saved." };
+}
+
+// ========== ADMIN HANDLERS ==========
+
+function validateAdminCode(code) {
+  return ADMIN_CODES.indexOf((code || "").trim().toUpperCase()) !== -1;
+}
+
+function deleteAllFilesInFolder(folderId) {
+  var folder = DriveApp.getFolderById(folderId);
+  var files = folder.getFiles();
+  var count = 0;
+  while (files.hasNext()) {
+    var file = files.next();
+    file.setTrashed(true);
+    count++;
+  }
+  return count;
+}
+
+function handleAdminResetAllRooms(body) {
+  var code = (body.code || "").trim().toUpperCase();
+  if (!validateAdminCode(code)) {
+    return { success: false, message: "Unauthorized. Admin access required." };
+  }
+  var count = deleteAllFilesInFolder(ROOM_FOLDER_ID);
+  return { success: true, message: "Reset complete. " + count + " room files deleted." };
+}
+
+function handleAdminResetAllNotes(body) {
+  var code = (body.code || "").trim().toUpperCase();
+  if (!validateAdminCode(code)) {
+    return { success: false, message: "Unauthorized. Admin access required." };
+  }
+  var count = deleteAllFilesInFolder(NOTES_FOLDER_ID);
+  return { success: true, message: "Reset complete. " + count + " note files deleted." };
+}
+
+function handleAdminResetAllPlayers(body) {
+  var code = (body.code || "").trim().toUpperCase();
+  if (!validateAdminCode(code)) {
+    return { success: false, message: "Unauthorized. Admin access required." };
+  }
+  var count = deleteAllFilesInFolder(PLAYER_FOLDER_ID);
+  return { success: true, message: "Reset complete. " + count + " player files deleted." };
 }
 
 // ========== UTILITY ==========

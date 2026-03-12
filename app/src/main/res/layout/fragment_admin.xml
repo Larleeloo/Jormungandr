@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A0A2E"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Admin Panel"
+            android:textColor="#FF4444"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="These actions reset cloud data for ALL players."
+            android:textColor="#FFAAAA"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Reset All Room Data -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset All Room Data"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deletes all room files from the cloud. Players currently in rooms will be sent to the spawn hub. Rooms will be regenerated when visited."
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btn_reset_rooms"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reset All Rooms"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#8B0000"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Reset All Note Data -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset All Note Data"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deletes all player notes from the cloud. Notes in waypoints, creature dens, and the hub will be cleared."
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btn_reset_notes"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reset All Notes"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#8B0000"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Reset All Player Save Data -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset All Player Save Data"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deletes all player save files from the cloud. Players will need to create new characters on next login."
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btn_reset_players"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reset All Player Saves"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#8B0000"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/admin_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>
