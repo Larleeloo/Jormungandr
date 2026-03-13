@@ -397,9 +397,10 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         BiomeType biome = BiomeType.fromRegion(currentRoom.getRegion());
         hudPaint.setColor(0xAAFFFFFF);
         hudPaint.setTextSize(20f);
-        boolean isTrunk = RoomIdHelper.isTrunkRoom(currentRoom.getRoomId());
-        String depthLabel = isTrunk ? "Trunk" : "Branch (Tier " + currentRoom.getZone() + ")";
-        canvas.drawText(biome.getDisplayName() + " - " + depthLabel,
+        int row = RoomIdHelper.getRow(currentRoom.getRoomId());
+        int col = RoomIdHelper.getCol(currentRoom.getRoomId());
+        String coordLabel = "(" + row + "," + col + ") Tier " + currentRoom.getZone();
+        canvas.drawText(biome.getDisplayName() + " - " + coordLabel,
                 20, canvasHeight - 48, hudPaint);
 
         // Waypoint indicator
@@ -418,43 +419,34 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
 
     private void drawWaypointProximity(Canvas canvas) {
         int roomNumber = RoomIdHelper.getRoomNumber(currentRoom.getRoomId());
+        int row = RoomIdHelper.getRow(roomNumber);
+        int col = RoomIdHelper.getCol(roomNumber);
 
-        // For trunk rooms, distance is to nearest waypoint interval multiple
-        // For branch rooms, they're off the trunk so show "Off Trunk"
-        int distance;
-        if (RoomIdHelper.isTrunkRoom(roomNumber)) {
-            int interval = Constants.WAYPOINT_INTERVAL;
-            if (interval > 0 && roomNumber > 0) {
-                int nearest = Math.round((float) roomNumber / interval) * interval;
-                if (nearest == 0) nearest = interval;
-                distance = Math.abs(roomNumber - nearest);
-            } else {
-                distance = roomNumber;
-            }
-        } else {
-            // Branch rooms: estimate distance as branch depth + some trunk distance
-            distance = 999; // far from any waypoint
-        }
+        // Distance to nearest waypoint grid position (row/col multiples of WAYPOINT_SPACING)
+        int spacing = Constants.WAYPOINT_SPACING;
+        int nearestRow = Math.round((float) row / spacing) * spacing;
+        int nearestCol = Math.round((float) col / spacing) * spacing;
+        int distance = Math.abs(row - nearestRow) + Math.abs(col - nearestCol);
 
         String label;
         int color;
-        if (distance <= 2) {
+        if (distance <= 1) {
             label = "SCORCHING";
             color = 0xFFFF0000;
-        } else if (distance <= 5) {
+        } else if (distance <= 3) {
             label = "HOT";
             color = 0xFFFF4400;
-        } else if (distance <= 10) {
+        } else if (distance <= 6) {
             label = "WARM";
             color = 0xFFFF8800;
-        } else if (distance <= 20) {
+        } else if (distance <= 10) {
             label = "COOL";
             color = 0xFF4488FF;
-        } else if (distance <= 40) {
+        } else if (distance <= 15) {
             label = "COLD";
             color = 0xFF0044FF;
         } else {
-            label = RoomIdHelper.isTrunkRoom(roomNumber) ? "FREEZING" : "OFF TRUNK";
+            label = "FREEZING";
             color = 0xFF0000CC;
         }
 
