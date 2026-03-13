@@ -12,16 +12,16 @@ import com.larleeloo.jormungandr.model.PlayerNote;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
-import java.util.Map;
-
 import java.util.List;
-
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * Coordinates cloud sync at save points (waypoint visit, hub entry, app pause).
- * Local-first: gameplay never blocks on network. All sync is async.
+ * All game data lives in the cloud — this manager handles async operations
+ * that don't go through GameRepository's synchronous path (e.g. merging notes,
+ * pulling fresh data from cloud into the in-memory model).
  */
 public class CloudSyncManager {
 
@@ -53,7 +53,7 @@ public class CloudSyncManager {
     }
 
     /**
-     * Download player data from Drive (async).
+     * Download player data from Drive (async) and set as current player in-memory.
      */
     public void syncPlayerFromCloud(String accessCode, SyncCallback callback) {
         executor.execute(() -> {
@@ -64,7 +64,6 @@ public class CloudSyncManager {
                     GameRepository repo = GameRepository.getInstance();
                     if (repo != null) {
                         repo.setCurrentPlayer(cloudPlayer);
-                        repo.savePlayer();
                     }
                 }
             }
@@ -88,10 +87,8 @@ public class CloudSyncManager {
     }
 
     /**
-     * Download room data from Drive (async). Replaces local room content with
+     * Download room data from Drive (async). Replaces in-memory room content with
      * cloud data while preserving door connections from the pre-built WorldMesh.
-     * Cloud room data (objects, notes, visit info) takes priority over local data,
-     * but the mesh-defined room layout is always authoritative for door connections.
      */
     public void syncRoomFromCloud(String roomId, SyncCallback callback) {
         executor.execute(() -> {
@@ -112,19 +109,18 @@ public class CloudSyncManager {
                         }
                     }
 
-                    Room localRoom = repo.getCurrentRoom();
-                    if (localRoom != null && localRoom.getRoomId() != null
-                            && localRoom.getRoomId().equals(roomId)) {
-                        // Replace local room content with cloud data
-                        localRoom.setObjects(cloudRoom.getObjects());
-                        localRoom.setFirstVisitedBy(cloudRoom.getFirstVisitedBy());
-                        localRoom.setFirstVisitedAt(cloudRoom.getFirstVisitedAt());
+                    Room currentRoom = repo.getCurrentRoom();
+                    if (currentRoom != null && currentRoom.getRoomId() != null
+                            && currentRoom.getRoomId().equals(roomId)) {
+                        currentRoom.setObjects(cloudRoom.getObjects());
+                        currentRoom.setFirstVisitedBy(cloudRoom.getFirstVisitedBy());
+                        currentRoom.setFirstVisitedAt(cloudRoom.getFirstVisitedAt());
 
-                        // Merge notes (additive — keep both local and cloud notes)
+                        // Merge notes (additive)
                         if (cloudRoom.getPlayerNotes() != null) {
                             for (PlayerNote cloudNote : cloudRoom.getPlayerNotes()) {
                                 boolean exists = false;
-                                for (PlayerNote localNote : localRoom.getPlayerNotes()) {
+                                for (PlayerNote localNote : currentRoom.getPlayerNotes()) {
                                     if (localNote.getText().equals(cloudNote.getText())
                                             && localNote.getPlayerName().equals(cloudNote.getPlayerName())) {
                                         exists = true;
@@ -132,11 +128,10 @@ public class CloudSyncManager {
                                     }
                                 }
                                 if (!exists) {
-                                    localRoom.getPlayerNotes().add(cloudNote);
+                                    currentRoom.getPlayerNotes().add(cloudNote);
                                 }
                             }
                         }
-                        repo.saveCurrentRoom();
                     }
                 }
             }
@@ -148,7 +143,6 @@ public class CloudSyncManager {
 
     /**
      * Upload a single note for a room to Drive (async).
-     * Matches the Apps Script saveNote action: {roomId, code, note}.
      */
     public void syncNoteToCloud(String roomId, String accessCode, String noteText, SyncCallback callback) {
         executor.execute(() -> {
@@ -160,20 +154,7 @@ public class CloudSyncManager {
     }
 
     /**
-     * @deprecated Use {@link #syncNoteToCloud} for individual notes instead.
-     */
-    public void syncNotesToCloud(String roomId, List<PlayerNote> notes, SyncCallback callback) {
-        executor.execute(() -> {
-            String json = JsonHelper.toJson(notes);
-            SyncResult result = client.saveNotes(roomId, json);
-            if (callback != null) {
-                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
-            }
-        });
-    }
-
-    /**
-     * Download notes for a room from Drive (async) and merge into local room.
+     * Download notes for a room from Drive (async) and merge into in-memory room.
      */
     public void syncNotesFromCloud(String roomId, SyncCallback callback) {
         executor.execute(() -> {
@@ -181,15 +162,15 @@ public class CloudSyncManager {
             if (result.isSuccess() && result.getData() != null) {
                 GameRepository repo = GameRepository.getInstance();
                 if (repo != null) {
-                    Room localRoom = repo.getCurrentRoom();
-                    if (localRoom != null && localRoom.getRoomId() != null
-                            && localRoom.getRoomId().equals(roomId)) {
+                    Room currentRoom = repo.getCurrentRoom();
+                    if (currentRoom != null && currentRoom.getRoomId() != null
+                            && currentRoom.getRoomId().equals(roomId)) {
                         List<PlayerNote> cloudNotes = JsonHelper.listFromJson(
                                 result.getData(), PlayerNote.class);
                         if (cloudNotes != null) {
                             for (PlayerNote cloudNote : cloudNotes) {
                                 boolean exists = false;
-                                for (PlayerNote localNote : localRoom.getPlayerNotes()) {
+                                for (PlayerNote localNote : currentRoom.getPlayerNotes()) {
                                     if (localNote.getText().equals(cloudNote.getText())
                                             && localNote.getPlayerName().equals(cloudNote.getPlayerName())) {
                                         exists = true;
@@ -197,10 +178,9 @@ public class CloudSyncManager {
                                     }
                                 }
                                 if (!exists) {
-                                    localRoom.getPlayerNotes().add(cloudNote);
+                                    currentRoom.getPlayerNotes().add(cloudNote);
                                 }
                             }
-                            repo.saveCurrentRoom();
                         }
                     }
                 }
@@ -237,7 +217,6 @@ public class CloudSyncManager {
 
     /**
      * Full sync: upload player + current room.
-     * Returns detailed error messages for UI feedback.
      */
     public void fullSync(Player player, Room room, SyncCallback callback) {
         executor.execute(() -> {
@@ -280,9 +259,6 @@ public class CloudSyncManager {
         });
     }
 
-    /**
-     * Admin: Reset all room data in the cloud (async).
-     */
     public void adminResetAllRooms(String accessCode, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.adminResetAllRooms(accessCode);
@@ -292,9 +268,6 @@ public class CloudSyncManager {
         });
     }
 
-    /**
-     * Admin: Reset all note data in the cloud (async).
-     */
     public void adminResetAllNotes(String accessCode, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.adminResetAllNotes(accessCode);
@@ -304,9 +277,6 @@ public class CloudSyncManager {
         });
     }
 
-    /**
-     * Admin: Reset all player save data in the cloud (async).
-     */
     public void adminResetAllPlayers(String accessCode, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.adminResetAllPlayers(accessCode);

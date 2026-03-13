@@ -129,7 +129,7 @@ public class AdminFragment extends Fragment {
         disableAllButtons();
         showStatus("Generating mesh reference (this may take a moment)...", true);
 
-        MeshExporter.exportAndUpload(requireContext(), (success, message) -> {
+        MeshExporter.exportAndUpload((success, message) -> {
             showStatus(message, success);
             enableAllButtons();
         });
