@@ -18,9 +18,12 @@ import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.model.BiomeType;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
+import com.larleeloo.jormungandr.view.BranchMapCanvasView;
 import com.larleeloo.jormungandr.view.MapCanvasView;
 
 public class MapFragment extends Fragment {
+
+    private boolean showingBranchMap = false;
 
     @Nullable
     @Override
@@ -34,9 +37,11 @@ public class MapFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         MapCanvasView mapCanvas = view.findViewById(R.id.map_canvas);
+        BranchMapCanvasView branchMapCanvas = view.findViewById(R.id.branch_map_canvas);
         TextView mapLocation = view.findViewById(R.id.map_location);
         LinearLayout waypointPanel = view.findViewById(R.id.waypoint_panel);
         Button btnTeleportHub = view.findViewById(R.id.btn_teleport_hub);
+        Button btnToggle = view.findViewById(R.id.btn_toggle_map);
 
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
@@ -48,6 +53,7 @@ public class MapFragment extends Fragment {
 
             mapLocation.setText(biome.getDisplayName() + " - " + roomId);
             mapCanvas.setPlayer(player, roomId);
+            branchMapCanvas.setPlayer(player, roomId);
 
             // Show waypoint panel if player has discovered waypoints
             if (!player.getDiscoveredWaypoints().isEmpty()) {
@@ -61,5 +67,18 @@ public class MapFragment extends Fragment {
                 }
             });
         }
+
+        btnToggle.setOnClickListener(v -> {
+            showingBranchMap = !showingBranchMap;
+            if (showingBranchMap) {
+                mapCanvas.setVisibility(View.GONE);
+                branchMapCanvas.setVisibility(View.VISIBLE);
+                btnToggle.setText("Sector View");
+            } else {
+                branchMapCanvas.setVisibility(View.GONE);
+                mapCanvas.setVisibility(View.VISIBLE);
+                btnToggle.setText("Branch View");
+            }
+        });
     }
 }

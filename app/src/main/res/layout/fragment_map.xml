@@ -10,7 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:padding="8dp"
+        android:gravity="center_vertical">
 
         <TextView
             android:layout_width="0dp"
@@ -21,6 +22,16 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
+        <Button
+            android:id="@+id/btn_toggle_map"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="Branch View"
+            android:textSize="11sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#333355"
+            android:layout_marginEnd="8dp" />
+
         <TextView
             android:id="@+id/map_location"
             android:layout_width="wrap_content"
@@ -29,11 +40,23 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <com.larleeloo.jormungandr.view.MapCanvasView
-        android:id="@+id/map_canvas"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <com.larleeloo.jormungandr.view.MapCanvasView
+            android:id="@+id/map_canvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <com.larleeloo.jormungandr.view.BranchMapCanvasView
+            android:id="@+id/branch_map_canvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
     <!-- Waypoint teleport buttons -->
     <LinearLayout
