@@ -102,16 +102,12 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         // Check if creature is blocking
         GameRepository repo = GameRepository.getInstance(requireContext());
         Room currentRoom = repo.getCurrentRoom();
-        if (currentRoom != null && currentRoom.hasLivingCreature() && direction != Direction.BACK) {
-            showMessage("A creature blocks this door! Defeat it or go BACK.");
+        if (currentRoom != null && currentRoom.hasLivingCreature()) {
+            showMessage("A creature blocks the doors! Defeat it first.");
             return;
         }
 
-        if (direction == Direction.BACK) {
-            activity.navigateBack();
-        } else {
-            activity.navigateToRoom(targetRoomId);
-        }
+        activity.navigateToRoom(targetRoomId);
     }
 
     @Override

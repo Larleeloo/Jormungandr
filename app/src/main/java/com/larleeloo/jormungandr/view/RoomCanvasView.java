@@ -207,72 +207,55 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         float doorW = canvasWidth * 0.12f;
         float doorH = canvasHeight * 0.22f;
         float floorY = canvasHeight * 0.82f;
-        float doorBottomY = floorY;
 
         int bgColor = BiomeType.fromRegion(currentRoom.getRegion()).getColor();
         int doorColor = lighten(bgColor, 0.15f);
+        doorLabelPaint.setColor(Color.WHITE);
 
-        // Left door
-        if (currentRoom.hasDoor(Direction.LEFT)) {
+        // West door (left wall)
+        if (currentRoom.hasDoor(Direction.WEST)) {
             float dx = wallMargin + canvasWidth * 0.03f;
-            float dy = doorBottomY - doorH;
+            float dy = floorY - doorH;
             PlaceholderRenderer.drawDoor(canvas, doorColor, dx, dy, doorW, doorH);
-            doorLabelPaint.setColor(Color.WHITE);
-            canvas.drawText("LEFT", dx + doorW / 2, dy - 8, doorLabelPaint);
-            doorHitBoxes.add(new DoorHitBox(Direction.LEFT,
-                    currentRoom.getDoorTarget(Direction.LEFT),
+            canvas.drawText("W", dx + doorW / 2, dy - 8, doorLabelPaint);
+            doorHitBoxes.add(new DoorHitBox(Direction.WEST,
+                    currentRoom.getDoorTarget(Direction.WEST),
                     new RectF(dx, dy, dx + doorW, dy + doorH)));
         }
 
-        // Right door
-        if (currentRoom.hasDoor(Direction.RIGHT)) {
+        // East door (right wall)
+        if (currentRoom.hasDoor(Direction.EAST)) {
             float dx = canvasWidth - wallMargin - canvasWidth * 0.03f - doorW;
-            float dy = doorBottomY - doorH;
+            float dy = floorY - doorH;
             PlaceholderRenderer.drawDoor(canvas, doorColor, dx, dy, doorW, doorH);
-            canvas.drawText("RIGHT", dx + doorW / 2, dy - 8, doorLabelPaint);
-            doorHitBoxes.add(new DoorHitBox(Direction.RIGHT,
-                    currentRoom.getDoorTarget(Direction.RIGHT),
+            canvas.drawText("E", dx + doorW / 2, dy - 8, doorLabelPaint);
+            doorHitBoxes.add(new DoorHitBox(Direction.EAST,
+                    currentRoom.getDoorTarget(Direction.EAST),
                     new RectF(dx, dy, dx + doorW, dy + doorH)));
         }
 
-        // Forward door (centered, slightly higher)
-        if (currentRoom.hasDoor(Direction.FORWARD)) {
-            float dx = canvasWidth / 2f - doorW / 2;
-            float dy = canvasHeight * 0.15f;
-            float fwdDoorH = doorH * 0.8f;
+        // North door (top center)
+        if (currentRoom.hasDoor(Direction.NORTH)) {
             float fwdDoorW = doorW * 0.85f;
-            dx = canvasWidth / 2f - fwdDoorW / 2;
+            float fwdDoorH = doorH * 0.8f;
+            float dx = canvasWidth / 2f - fwdDoorW / 2;
+            float dy = canvasHeight * 0.15f;
             PlaceholderRenderer.drawDoor(canvas, doorColor, dx, dy, fwdDoorW, fwdDoorH);
-            canvas.drawText("FORWARD", dx + fwdDoorW / 2, dy - 8, doorLabelPaint);
-            doorHitBoxes.add(new DoorHitBox(Direction.FORWARD,
-                    currentRoom.getDoorTarget(Direction.FORWARD),
+            canvas.drawText("N", dx + fwdDoorW / 2, dy - 8, doorLabelPaint);
+            doorHitBoxes.add(new DoorHitBox(Direction.NORTH,
+                    currentRoom.getDoorTarget(Direction.NORTH),
                     new RectF(dx, dy, dx + fwdDoorW, dy + fwdDoorH)));
         }
 
-        // Back door (bottom center, like entrance)
-        if (currentRoom.hasDoor(Direction.BACK)) {
-            float dx = canvasWidth / 2f - doorW * 0.6f / 2;
-            float dy = floorY - doorH * 0.5f;
-            float backDoorW = doorW * 0.6f;
-            float backDoorH = doorH * 0.5f;
-
-            // Draw a simpler "back" indicator
-            Paint backPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            backPaint.setColor(doorColor);
-            backPaint.setAlpha(180);
-            canvas.drawRoundRect(new RectF(dx, dy, dx + backDoorW, dy + backDoorH),
-                    8f, 8f, backPaint);
-
-            // Arrow pointing down
-            Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            arrowPaint.setColor(Color.WHITE);
-            arrowPaint.setTextSize(28f);
-            arrowPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("\u2193 BACK", dx + backDoorW / 2, dy + backDoorH / 2 + 10, arrowPaint);
-
-            doorHitBoxes.add(new DoorHitBox(Direction.BACK,
-                    currentRoom.getDoorTarget(Direction.BACK),
-                    new RectF(dx, dy, dx + backDoorW, dy + backDoorH)));
+        // South door (bottom center)
+        if (currentRoom.hasDoor(Direction.SOUTH)) {
+            float dx = canvasWidth / 2f - doorW / 2;
+            float dy = floorY - doorH;
+            PlaceholderRenderer.drawDoor(canvas, doorColor, dx, dy, doorW, doorH);
+            canvas.drawText("S", dx + doorW / 2, dy - 8, doorLabelPaint);
+            doorHitBoxes.add(new DoorHitBox(Direction.SOUTH,
+                    currentRoom.getDoorTarget(Direction.SOUTH),
+                    new RectF(dx, dy, dx + doorW, dy + doorH)));
         }
     }
 
@@ -419,14 +402,20 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
 
     private void drawWaypointProximity(Canvas canvas) {
         int roomNumber = RoomIdHelper.getRoomNumber(currentRoom.getRoomId());
+        int region = currentRoom.getRegion();
         int row = RoomIdHelper.getRow(roomNumber);
         int col = RoomIdHelper.getCol(roomNumber);
 
-        // Distance to nearest waypoint grid position (row/col multiples of WAYPOINT_SPACING)
-        int spacing = Constants.WAYPOINT_SPACING;
-        int nearestRow = Math.round((float) row / spacing) * spacing;
-        int nearestCol = Math.round((float) col / spacing) * spacing;
-        int distance = Math.abs(row - nearestRow) + Math.abs(col - nearestCol);
+        // Manhattan distance to the nearest seeded waypoint in this region
+        int[] waypoints = RoomIdHelper.getWaypointSet(region);
+        int distance = Integer.MAX_VALUE;
+        for (int wp : waypoints) {
+            int wr = RoomIdHelper.getRow(wp);
+            int wc = RoomIdHelper.getCol(wp);
+            int d = Math.abs(row - wr) + Math.abs(col - wc);
+            if (d < distance) distance = d;
+        }
+        if (waypoints.length == 0) distance = 999;
 
         String label;
         int color;

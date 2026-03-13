@@ -211,7 +211,7 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
                     canvas.drawRect(cellRect, cellPaint);
 
                     // Waypoint highlight
-                    if (RoomIdHelper.isWaypoint(RoomIdHelper.toRoomNumber(row, col))) {
+                    if (RoomIdHelper.isWaypoint(displayRegion, RoomIdHelper.toRoomNumber(row, col))) {
                         canvas.drawRect(cellRect, waypointPaint);
                     }
 
@@ -248,7 +248,7 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
                             float ny = RoomIdHelper.getRow(neighborId) * CELL_SIZE;
 
                             // Draw a thin rect connecting the two cells
-                            if (dir == Direction.RIGHT || dir == Direction.LEFT) {
+                            if (dir == Direction.EAST || dir == Direction.WEST) {
                                 float minX = Math.min(cx, nx);
                                 float maxX = Math.max(cx, nx);
                                 canvas.drawRect(minX + half - 1, cy - PASSAGE_WIDTH / 2f,

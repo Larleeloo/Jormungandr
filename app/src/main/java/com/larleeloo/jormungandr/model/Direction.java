@@ -1,15 +1,14 @@
 package com.larleeloo.jormungandr.model;
 
 /**
- * Four cardinal directions used for room connections.
- * In the grid maze: FORWARD=North (row-1), BACK=South (row+1),
- * LEFT=West (col-1), RIGHT=East (col+1).
+ * Four cardinal directions used for room connections in the grid maze.
+ * NORTH (row-1), SOUTH (row+1), WEST (col-1), EAST (col+1).
  */
 public enum Direction {
-    LEFT("Left", 0, -1),
-    RIGHT("Right", 0, 1),
-    FORWARD("Forward", -1, 0),
-    BACK("Back", 1, 0);
+    WEST("West", 0, -1),
+    EAST("East", 0, 1),
+    NORTH("North", -1, 0),
+    SOUTH("South", 1, 0);
 
     private final String displayName;
     private final int dRow;
@@ -27,11 +26,11 @@ public enum Direction {
 
     public Direction opposite() {
         switch (this) {
-            case LEFT: return RIGHT;
-            case RIGHT: return LEFT;
-            case FORWARD: return BACK;
-            case BACK: return FORWARD;
-            default: return BACK;
+            case WEST: return EAST;
+            case EAST: return WEST;
+            case NORTH: return SOUTH;
+            case SOUTH: return NORTH;
+            default: return SOUTH;
         }
     }
 }

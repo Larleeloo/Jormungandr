@@ -44,7 +44,7 @@ public class RoomGenerator {
         room.setBackgroundId(generateBackgroundId(region, rng));
 
         // Check if waypoint
-        room.setWaypoint(RoomIdHelper.isWaypoint(roomNumber));
+        room.setWaypoint(RoomIdHelper.isWaypoint(region, roomNumber));
 
         // Generate doors via MeshGenerator
         Map<Direction, String> doors = MeshGenerator.generateDoors(region, roomNumber);
@@ -78,7 +78,9 @@ public class RoomGenerator {
         hub.setBackgroundId("hub_bg1");
         hub.setWaypoint(true);
 
-        // Hub has doors to all 8 regions
+        // Hub starts with a single NORTH door to region 1 entrance.
+        // Additional portal doors are managed dynamically by HubFragment
+        // based on the player's discovered waypoints.
         Map<Direction, String> doors = MeshGenerator.generateDoors(0, 0);
         for (Map.Entry<Direction, String> entry : doors.entrySet()) {
             hub.addDoor(entry.getKey(), entry.getValue());

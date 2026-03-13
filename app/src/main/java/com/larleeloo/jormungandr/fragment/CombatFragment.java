@@ -300,13 +300,20 @@ public class CombatFragment extends Fragment implements ActionAdapter.OnActionCl
         GameRepository repo = GameRepository.getInstance(requireContext());
         Room room = repo.getCurrentRoom();
 
-        // Navigate back through the back door
-        if (room != null && room.hasDoor(com.larleeloo.jormungandr.model.Direction.BACK)) {
-            String backRoom = room.getDoorTarget(com.larleeloo.jormungandr.model.Direction.BACK);
-            combatEngine.clearBuffs();
-            activity.navigateToRoom(backRoom);
+        // Flee to the room the player came from, or any available door
+        Player fleePlayer = repo.getCurrentPlayer();
+        String fleeTarget = fleePlayer != null ? fleePlayer.getPreviousRoomId() : null;
+        if (fleeTarget == null && room != null) {
+            // Fall back to any available door
+            List<com.larleeloo.jormungandr.model.Direction> dirs = room.getAvailableDirections();
+            if (!dirs.isEmpty()) {
+                fleeTarget = room.getDoorTarget(dirs.get(0));
+            }
+        }
+        combatEngine.clearBuffs();
+        if (fleeTarget != null) {
+            activity.navigateToRoom(fleeTarget);
         } else {
-            combatEngine.clearBuffs();
             activity.returnFromCombat(false);
         }
     }

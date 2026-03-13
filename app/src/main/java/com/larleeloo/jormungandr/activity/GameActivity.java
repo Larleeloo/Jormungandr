@@ -80,13 +80,18 @@ public class GameActivity extends AppCompatActivity {
         // Load the initial room
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
+        String startRoom = Constants.HUB_ROOM_ID;
         if (player != null) {
-            String startRoom = player.getCurrentRoomId();
+            startRoom = player.getCurrentRoomId();
             repo.loadOrGenerateRoom(startRoom);
         }
 
         updateHud();
-        showFragment(new RoomFragment(), "room");
+        if (com.larleeloo.jormungandr.util.RoomIdHelper.isHub(startRoom)) {
+            showFragment(new HubFragment(), "hub");
+        } else {
+            showFragment(new RoomFragment(), "room");
+        }
     }
 
     public void showFragment(Fragment fragment, String tag) {
@@ -130,41 +135,16 @@ public class GameActivity extends AppCompatActivity {
         // Show loading screen for at least LOADING_SCREEN_MIN_MS
         long elapsed = System.currentTimeMillis() - loadStart;
         long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
-        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
-    }
 
-    public void navigateBack() {
-        // Show loading screen with random item/creature
-        showFragment(new LoadingFragment(), "loading");
-
-        GameRepository repo = GameRepository.getInstance(this);
-        Player player = repo.getCurrentPlayer();
-
-        // Upload the room we're LEAVING to cloud (lazy sync)
-        Room leavingRoom = repo.getCurrentRoom();
-        if (leavingRoom != null && player != null && cloudSyncManager != null) {
-            cloudSyncManager.syncRoomToCloud(leavingRoom, null);
-        }
-
-        long loadStart = System.currentTimeMillis();
-
-        // Pop from history stack instead of using BACK door target
-        Room room = repo.navigateBack();
-        updateHud();
-
-        if (player != null && cloudSyncManager != null) {
-            showSyncStatus(true, "Syncing...");
-            cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
-                    showSyncStatus(success, message));
-            if (room != null) {
-                cloudSyncManager.syncRoomFromCloud(room.getRoomId(), null);
+        // Hub room gets HubFragment; all others get RoomFragment
+        boolean isHub = com.larleeloo.jormungandr.util.RoomIdHelper.isHub(roomId);
+        syncUiHandler.postDelayed(() -> {
+            if (isHub) {
+                showFragment(new HubFragment(), "hub");
+            } else {
+                showFragment(new RoomFragment(), "room");
             }
-        }
-
-        // Show loading screen for at least LOADING_SCREEN_MIN_MS
-        long elapsed = System.currentTimeMillis() - loadStart;
-        long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
-        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
+        }, remaining);
     }
 
     public void startCombat(String creatureDefId, int level, int hp) {
@@ -208,7 +188,7 @@ public class GameActivity extends AppCompatActivity {
                             showSyncStatus(success, message));
                 }
             }
-            showFragment(new RoomFragment(), "room");
+            showFragment(new HubFragment(), "hub");
         }
     }
 
@@ -281,8 +261,16 @@ public class GameActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (!"room".equals(currentFragmentTag)) {
-            showFragment(new RoomFragment(), "room");
+        if (!"room".equals(currentFragmentTag) && !"hub".equals(currentFragmentTag)) {
+            // Return to the current room view
+            GameRepository repo = GameRepository.getInstance(this);
+            Player p = repo.getCurrentPlayer();
+            String rid = p != null ? p.getCurrentRoomId() : Constants.HUB_ROOM_ID;
+            if (com.larleeloo.jormungandr.util.RoomIdHelper.isHub(rid)) {
+                showFragment(new HubFragment(), "hub");
+            } else {
+                showFragment(new RoomFragment(), "room");
+            }
         } else {
             super.onBackPressed();
         }
