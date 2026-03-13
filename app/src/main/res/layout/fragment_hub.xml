@@ -1,116 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#DEB887"
-    android:padding="16dp"
-    android:gravity="center_horizontal">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Desert Marketplace"
-        android:textColor="#4B0082"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:fontFamily="serif"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Choose a Region"
-        android:textColor="#333333"
-        android:textSize="16sp"
-        android:layout_marginBottom="12dp" />
-
-    <!-- Region doors grid -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center">
-
-        <Button android:id="@+id/btn_region_1" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="1\nDungeon" android:textSize="10sp" android:textColor="#FFF"
-            android:backgroundTint="#8B0000" android:layout_margin="4dp" />
-        <Button android:id="@+id/btn_region_2" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="2\nVolcano" android:textSize="10sp" android:textColor="#FFF"
-            android:backgroundTint="#FF4500" android:layout_margin="4dp" />
-        <Button android:id="@+id/btn_region_3" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="3\nMeadow" android:textSize="10sp" android:textColor="#333"
-            android:backgroundTint="#FFD700" android:layout_margin="4dp" />
-        <Button android:id="@+id/btn_region_4" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="4\nForest" android:textSize="10sp" android:textColor="#FFF"
-            android:backgroundTint="#228B22" android:layout_margin="4dp" />
-    </LinearLayout>
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center">
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center_horizontal">
 
-        <Button android:id="@+id/btn_region_5" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="5\nOcean" android:textSize="10sp" android:textColor="#FFF"
-            android:backgroundTint="#1E90FF" android:layout_margin="4dp" />
-        <Button android:id="@+id/btn_region_6" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="6\nCastle" android:textSize="10sp" android:textColor="#333"
-            android:backgroundTint="#FF69B4" android:layout_margin="4dp" />
-        <Button android:id="@+id/btn_region_7" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="7\nIce" android:textSize="10sp" android:textColor="#333"
-            android:backgroundTint="#87CEEB" android:layout_margin="4dp" />
-        <Button android:id="@+id/btn_region_8" android:layout_width="80dp" android:layout_height="80dp"
-            android:text="8\nVoid" android:textSize="10sp" android:textColor="#FFF"
-            android:backgroundTint="#4B0082" android:layout_margin="4dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Desert Marketplace"
+            android:textColor="#4B0082"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:fontFamily="serif"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Portal Doors"
+            android:textColor="#333333"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Dynamic portal buttons added here -->
+        <LinearLayout
+            android:id="@+id/portal_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <!-- Hub services -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="20dp">
+
+            <Button
+                android:id="@+id/btn_shop"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:text="Shop"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#4B0082"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_storage"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:text="Storage"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#4B0082"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_save"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:text="Save"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#228B22" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/hub_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#333333"
+            android:textSize="14sp"
+            android:layout_marginTop="16dp" />
+
     </LinearLayout>
-
-    <!-- Hub services -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="20dp">
-
-        <Button
-            android:id="@+id/btn_shop"
-            android:layout_width="0dp"
-            android:layout_height="50dp"
-            android:layout_weight="1"
-            android:text="Shop"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#4B0082"
-            android:layout_marginEnd="8dp" />
-
-        <Button
-            android:id="@+id/btn_storage"
-            android:layout_width="0dp"
-            android:layout_height="50dp"
-            android:layout_weight="1"
-            android:text="Storage"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#4B0082"
-            android:layout_marginEnd="8dp" />
-
-        <Button
-            android:id="@+id/btn_save"
-            android:layout_width="0dp"
-            android:layout_height="50dp"
-            android:layout_weight="1"
-            android:text="Save"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#228B22" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/hub_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#333333"
-        android:textSize="14sp"
-        android:layout_marginTop="16dp" />
-
-</LinearLayout>
+</ScrollView>

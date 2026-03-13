@@ -189,6 +189,10 @@ public class GameRepository {
                 currentPlayer.setStamina(currentPlayer.getMaxStamina());
             } else if (room != null && room.isWaypoint()) {
                 currentPlayer.setStamina(currentPlayer.getMaxStamina());
+                // Auto-link discovered waypoints to the hub
+                if (!currentPlayer.getDiscoveredWaypoints().contains(roomId)) {
+                    currentPlayer.getDiscoveredWaypoints().add(roomId);
+                }
             } else {
                 int newStamina = currentPlayer.getStamina() - Constants.STAMINA_COST_MOVE
                         + Constants.STAMINA_REGEN_PER_ROOM;

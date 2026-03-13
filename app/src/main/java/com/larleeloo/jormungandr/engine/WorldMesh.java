@@ -206,9 +206,8 @@ public class WorldMesh {
 
     private void buildHub() {
         RoomNode hub = new RoomNode(0, 0);
+        // New players start with only one door: NORTH to region 1 entrance
         hub.addNeighbor(Direction.NORTH, RoomIdHelper.makeRoomId(1, 0));
-        hub.addNeighbor(Direction.WEST, RoomIdHelper.makeRoomId(8, 0));
-        hub.addNeighbor(Direction.EAST, RoomIdHelper.makeRoomId(2, 0));
         putNode(hub);
     }
 
@@ -287,35 +286,36 @@ public class WorldMesh {
             }
         }
 
-        // Phase 3: Add portal doors on dead-end-ish rooms to other regions
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                // Only rooms with fewer than 4 connections can get portals
-                if (grid[r][c].getNeighborCount() >= 4) continue;
-                if (rng.nextDouble() >= Constants.PORTAL_CHANCE) continue;
+        // Phase 3: Place exactly 7 one-way portal doors — one for each other region.
+        // Each portal targets the destination region's single waypoint room.
+        // Portals are one-way: entering takes the player to the waypoint, but
+        // the waypoint does NOT have a door back to the source portal room.
+        int portalsPlaced = 0;
+        for (int targetRegion = 1; targetRegion <= Constants.NUM_REGIONS; targetRegion++) {
+            if (targetRegion == region) continue;
 
-                // Find an open direction for the portal
-                Direction portalDir = null;
+            String targetWaypointId = RoomIdHelper.getRegionWaypointId(targetRegion);
+            if (targetWaypointId == null) continue;
+
+            // Find a random room with an open direction for this portal
+            boolean placed = false;
+            for (int attempt = 0; attempt < 500 && !placed; attempt++) {
+                int pr = rng.nextInt(size);
+                int pc = rng.nextInt(size);
+                // Don't place portals on the entrance or on this region's waypoint
+                int roomNum = RoomIdHelper.toRoomNumber(pr, pc);
+                if (roomNum == 0) continue;
+                if (RoomIdHelper.isWaypoint(region, roomNum)) continue;
+
+                // Find an open direction
                 for (Direction dir : Direction.values()) {
-                    if (!grid[r][c].hasNeighbor(dir)) {
-                        portalDir = dir;
+                    if (!grid[pr][pc].hasNeighbor(dir)) {
+                        grid[pr][pc].addNeighbor(dir, targetWaypointId);
+                        placed = true;
+                        portalsPlaced++;
                         break;
                     }
                 }
-                if (portalDir == null) continue;
-
-                // Pick a random target region (different from this one)
-                int targetRegion;
-                do {
-                    targetRegion = rng.nextIntRange(1, Constants.NUM_REGIONS);
-                } while (targetRegion == region);
-
-                // Pick a random room in the target region
-                int targetRow = rng.nextInt(size);
-                int targetCol = rng.nextInt(size);
-                int targetRoom = RoomIdHelper.toRoomNumber(targetRow, targetCol);
-                grid[r][c].addNeighbor(portalDir,
-                        RoomIdHelper.makeRoomId(targetRegion, targetRoom));
             }
         }
 

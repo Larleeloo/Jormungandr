@@ -22,7 +22,6 @@ public final class Constants {
     // Grid maze topology (100x100 per region)
     public static final int GRID_SIZE = 100;
     public static final double MAZE_EXTRA_CONNECTION_CHANCE = 0.08;
-    public static final double PORTAL_CHANCE = 0.02;
 
     // Room generation
     public static final double CREATURE_DEN_CHANCE = 0.20;

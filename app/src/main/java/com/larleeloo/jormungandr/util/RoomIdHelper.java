@@ -9,16 +9,14 @@ public final class RoomIdHelper {
     private RoomIdHelper() {}
 
     /**
-     * Number of waypoints scattered per region.
-     * They are placed at seeded-random positions, never at the region entrance (0,0).
+     * Pre-computed single waypoint room number per region (lazily built).
+     * Index 0 unused (hub). Indices 1-8 hold the waypoint for that region.
+     * A value of -1 means not yet computed.
      */
-    private static final int WAYPOINTS_PER_REGION = 50;
-
-    /**
-     * Pre-computed waypoint room numbers per region (lazily built).
-     * waypointSets[region] is a sorted array of room numbers that are waypoints.
-     */
-    private static final int[][] waypointSets = new int[Constants.NUM_REGIONS + 1][];
+    private static final int[] waypointRoomNumbers = new int[Constants.NUM_REGIONS + 1];
+    static {
+        java.util.Arrays.fill(waypointRoomNumbers, -1);
+    }
 
     public static String makeRoomId(int region, int number) {
         return String.format("r%d_%05d", region, number);
@@ -71,12 +69,11 @@ public final class RoomIdHelper {
 
     /**
      * Difficulty tier (1-5) based on Manhattan distance from the grid origin (0,0).
-     * Closer to origin = easier, farther = harder.
      */
     public static int getDifficultyTier(int region, int roomNumber) {
         int row = getRow(roomNumber);
         int col = getCol(roomNumber);
-        int dist = row + col; // Manhattan distance from (0,0)
+        int dist = row + col;
         if (dist < 25) return 1;
         if (dist < 50) return 2;
         if (dist < 100) return 3;
@@ -94,24 +91,16 @@ public final class RoomIdHelper {
     }
 
     /**
-     * Waypoints are placed at seeded-random positions within each region.
-     * There are ~50 per region, scattered throughout the grid so that
-     * players must explore to find them. The region entrance (0,0) is NOT
-     * a waypoint.
+     * Each region has exactly one waypoint, placed at a seeded-random position.
+     * The region entrance (0,0) is never the waypoint.
      */
     public static boolean isWaypoint(int roomNumber) {
-        // Hub room is always a waypoint
         return false; // region-unaware overload — use the region-aware version
     }
 
     public static boolean isWaypoint(int region, int roomNumber) {
-        if (region <= 0) return false;
-        if (region > Constants.NUM_REGIONS) return false;
-        // Room (0,0) is the region entrance — never a waypoint
-        if (roomNumber == 0) return false;
-
-        int[] set = getWaypointSet(region);
-        return java.util.Arrays.binarySearch(set, roomNumber) >= 0;
+        if (region < 1 || region > Constants.NUM_REGIONS) return false;
+        return roomNumber == getRegionWaypointNumber(region);
     }
 
     public static boolean isWaypoint(String roomId) {
@@ -119,60 +108,58 @@ public final class RoomIdHelper {
     }
 
     /**
-     * Get the pre-computed waypoint room numbers for a region.
+     * Get the single waypoint room number for a region.
+     * Deterministically placed using a seeded LCG, avoiding (0,0).
      */
-    public static int[] getWaypointSet(int region) {
-        if (region < 1 || region > Constants.NUM_REGIONS) return new int[0];
-        if (waypointSets[region] == null) {
-            waypointSets[region] = buildWaypointSet(region);
+    public static int getRegionWaypointNumber(int region) {
+        if (region < 1 || region > Constants.NUM_REGIONS) return -1;
+        if (waypointRoomNumbers[region] == -1) {
+            waypointRoomNumbers[region] = computeWaypointNumber(region);
         }
-        return waypointSets[region];
+        return waypointRoomNumbers[region];
     }
 
     /**
-     * Build waypoint positions deterministically using a seeded LCG.
-     * Scatters WAYPOINTS_PER_REGION waypoints across the grid, avoiding (0,0)
-     * and ensuring no duplicates.
+     * Get the single waypoint room ID for a region.
      */
-    private static int[] buildWaypointSet(int region) {
-        // Simple seeded LCG for deterministic placement
-        long seed = Constants.WORLD_SEED ^ ((long) region << 32) ^ WAYPOINT_SEED_MIX;
-
-        java.util.Set<Integer> positions = new java.util.LinkedHashSet<>();
-        int totalCells = Constants.GRID_SIZE * Constants.GRID_SIZE;
-        int attempts = 0;
-
-        while (positions.size() < WAYPOINTS_PER_REGION && attempts < WAYPOINTS_PER_REGION * 10) {
-            seed = lcgNext(seed);
-            int candidate = (int) ((seed >>> 16) % totalCells);
-            // Skip the entrance room (0,0) = room number 0
-            if (candidate == 0) { attempts++; continue; }
-            // Ensure some minimum spacing (Manhattan distance >= 5 from all existing)
-            int row = getRow(candidate);
-            int col = getCol(candidate);
-            boolean tooClose = false;
-            for (int existing : positions) {
-                int er = getRow(existing);
-                int ec = getCol(existing);
-                if (Math.abs(row - er) + Math.abs(col - ec) < 5) {
-                    tooClose = true;
-                    break;
-                }
-            }
-            if (!tooClose) {
-                positions.add(candidate);
-            }
-            attempts++;
-        }
-
-        int[] result = new int[positions.size()];
-        int i = 0;
-        for (int p : positions) result[i++] = p;
-        java.util.Arrays.sort(result);
-        return result;
+    public static String getRegionWaypointId(int region) {
+        int num = getRegionWaypointNumber(region);
+        if (num < 0) return null;
+        return makeRoomId(region, num);
     }
 
-    // Hex literal workaround: 0xWAYPOINT doesn't compile, use a constant
+    /**
+     * For backward compat with getWaypointSet() callers.
+     * Returns a single-element array.
+     */
+    public static int[] getWaypointSet(int region) {
+        int wp = getRegionWaypointNumber(region);
+        if (wp < 0) return new int[0];
+        return new int[]{wp};
+    }
+
+    /**
+     * Compute the waypoint position for a region using seeded LCG.
+     * The waypoint is placed at a random position NOT at (0,0) and NOT
+     * too close to (0,0) — minimum Manhattan distance of 15 from the entrance.
+     */
+    private static int computeWaypointNumber(int region) {
+        long seed = Constants.WORLD_SEED ^ ((long) region << 32) ^ WAYPOINT_SEED_MIX;
+        int totalCells = Constants.GRID_SIZE * Constants.GRID_SIZE;
+
+        for (int attempt = 0; attempt < 1000; attempt++) {
+            seed = lcgNext(seed);
+            int candidate = (int) ((seed >>> 16) % totalCells);
+            if (candidate == 0) continue;
+            int row = getRow(candidate);
+            int col = getCol(candidate);
+            // Ensure waypoint is not too close to the entrance
+            if (row + col >= 15) return candidate;
+        }
+        // Fallback: center of grid
+        return toRoomNumber(50, 50);
+    }
+
     private static final long WAYPOINT_SEED_MIX = 0x574159504F494E54L;
 
     private static long lcgNext(long seed) {
