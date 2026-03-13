@@ -45,6 +45,8 @@
  *   listRooms     { region }                  → { success, data }
  *   getNotes      { roomId }                  → { success, data }
  *   saveNote      { roomId, code, note }      → { success, message }
+ *   saveMeshReference { data }                → { success, message }
+ *   getMeshReference  {}                       → { success, data }
  *
  * =============================================
  */
@@ -90,6 +92,10 @@ function doPost(e) {
         return jsonResponse(handleGetNotes(body));
       case "saveNote":
         return jsonResponse(handleSaveNote(body));
+      case "saveMeshReference":
+        return jsonResponse(handleSaveMeshReference(body));
+      case "getMeshReference":
+        return jsonResponse(handleGetMeshReference());
       case "adminResetAllRooms":
         return jsonResponse(handleAdminResetAllRooms(body));
       case "adminResetAllNotes":
@@ -291,6 +297,50 @@ function handleSaveNote(body) {
   }
 
   return { success: true, message: "Note saved." };
+}
+
+// ========== MESH REFERENCE HANDLERS ==========
+
+/**
+ * Save the world mesh reference as a single JSON file in the rooms folder.
+ * This is a one-time operation that creates the authoritative room layout.
+ */
+function handleSaveMeshReference(body) {
+  var data = body.data;
+  if (!data) {
+    return { success: false, message: "Missing mesh reference data." };
+  }
+
+  try {
+    JSON.parse(data);
+  } catch (err) {
+    return { success: false, message: "Invalid JSON data." };
+  }
+
+  var fileName = "world_mesh_reference.json";
+  var folder = DriveApp.getFolderById(ROOM_FOLDER_ID);
+  var existing = findFileInFolder(ROOM_FOLDER_ID, fileName);
+
+  if (existing) {
+    existing.setContent(data);
+  } else {
+    folder.createFile(fileName, data, MimeType.PLAIN_TEXT);
+  }
+
+  return { success: true, message: "Mesh reference saved (" + data.length + " bytes)." };
+}
+
+/**
+ * Retrieve the world mesh reference JSON from Drive.
+ */
+function handleGetMeshReference() {
+  var fileName = "world_mesh_reference.json";
+  var file = findFileInFolder(ROOM_FOLDER_ID, fileName);
+  if (!file) {
+    return { success: false, message: "No mesh reference found." };
+  }
+  var data = file.getBlob().getDataAsString();
+  return { success: true, message: "Mesh reference loaded.", data: data };
 }
 
 // ========== ADMIN HANDLERS ==========

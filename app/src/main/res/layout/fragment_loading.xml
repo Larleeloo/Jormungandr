@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A0A2E">
+
+    <!-- Centered content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp">
+
+        <!-- Sprite placeholder (colored square representing the random item/creature) -->
+        <View
+            android:id="@+id/loading_sprite"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:background="#FFD700" />
+
+        <!-- Item/creature name -->
+        <TextView
+            android:id="@+id/loading_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="#FFD700"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:text="Loading..." />
+
+        <!-- Fun description/tip -->
+        <TextView
+            android:id="@+id/loading_description"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:text="" />
+
+        <!-- Animated dots -->
+        <TextView
+            android:id="@+id/loading_dots"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:text="Traveling . . ." />
+
+    </LinearLayout>
+
+</FrameLayout>

@@ -2,16 +2,31 @@ package com.larleeloo.jormungandr.data;
 
 import android.content.Context;
 
+import com.larleeloo.jormungandr.cloud.AppsScriptClient;
+import com.larleeloo.jormungandr.cloud.SyncResult;
 import com.larleeloo.jormungandr.engine.RoomGenerator;
+import com.larleeloo.jormungandr.engine.RoomNode;
+import com.larleeloo.jormungandr.engine.WorldMesh;
+import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.FormulaHelper;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
+import java.util.Map;
+
 /**
- * Singleton coordinating all game data access. Local-first: gameplay reads/writes local JSON.
- * Cloud sync is triggered at save points (waypoints, hub, app pause).
+ * Singleton coordinating all game data access.
+ *
+ * Room loading priority:
+ *   1. Check Drive cloud storage for existing room data
+ *   2. Check local cache
+ *   3. Generate room content based on the room's position in the pre-built WorldMesh
+ *
+ * The WorldMesh (a pre-generated branching linked list of all 80,000 rooms) defines
+ * which rooms connect to which. Room content (creatures, loot, traps) is generated
+ * on demand when a room is first visited and no cloud data exists for it.
  */
 public class GameRepository {
     private static GameRepository instance;
@@ -22,6 +37,7 @@ public class GameRepository {
     private final RoomFileManager roomFileManager;
     private final PlayerFileManager playerFileManager;
     private final RoomGenerator roomGenerator;
+    private final AppsScriptClient cloudClient;
 
     private Player currentPlayer;
     private Room currentRoom;
@@ -32,12 +48,16 @@ public class GameRepository {
         this.creatureRegistry = new CreatureRegistry();
         this.roomFileManager = new RoomFileManager(localCache);
         this.playerFileManager = new PlayerFileManager(localCache);
+        this.cloudClient = new AppsScriptClient();
 
         // Load registries
         itemRegistry.load(context);
         creatureRegistry.load(context);
 
         this.roomGenerator = new RoomGenerator(itemRegistry, creatureRegistry);
+
+        // Try loading mesh from reference file (lazy mode) before falling back to full build
+        WorldMesh.initFromReference(context);
     }
 
     public static synchronized GameRepository getInstance(Context context) {
@@ -88,18 +108,35 @@ public class GameRepository {
 
     // ---- Room operations ----
 
+    /**
+     * Load a room using the priority: cloud -> local cache -> generate from WorldMesh.
+     * Door connections always come from the pre-built WorldMesh linked list,
+     * ensuring the room layout is consistent regardless of data source.
+     */
     public Room loadOrGenerateRoom(String roomId) {
-        // Try loading from local cache first
-        if (roomFileManager.roomExists(roomId)) {
-            currentRoom = roomFileManager.loadRoom(roomId);
-            return currentRoom;
-        }
-
-        // Generate new room
         int region = RoomIdHelper.getRegion(roomId);
         int roomNumber = RoomIdHelper.getRoomNumber(roomId);
         int playerLevel = currentPlayer != null ? currentPlayer.getLevel() : 1;
 
+        // 1. Try fetching from Drive cloud storage first
+        Room cloudRoom = fetchRoomFromCloud(roomId);
+        if (cloudRoom != null) {
+            // Cloud data exists — apply mesh doors to ensure layout consistency
+            applyMeshDoors(cloudRoom, region, roomNumber);
+            roomFileManager.saveRoom(cloudRoom);
+            currentRoom = cloudRoom;
+            return currentRoom;
+        }
+
+        // 2. Try loading from local cache
+        if (roomFileManager.roomExists(roomId)) {
+            currentRoom = roomFileManager.loadRoom(roomId);
+            // Re-apply mesh doors in case the local data has stale connections
+            applyMeshDoors(currentRoom, region, roomNumber);
+            return currentRoom;
+        }
+
+        // 3. No cloud or local data — generate room content based on WorldMesh position
         if (region == 0) {
             currentRoom = roomGenerator.generateHubRoom();
         } else {
@@ -113,37 +150,43 @@ public class GameRepository {
         // Save generated room
         roomFileManager.saveRoom(currentRoom);
 
-        // Ensure bidirectional door links: for each door target, if that room
-        // doesn't exist yet, generate it and ensure its BACK door points here.
-        if (region != 0) {
-            ensureBidirectionalDoors(currentRoom, playerLevel);
-        }
-
         return currentRoom;
     }
 
     /**
-     * For each door in the source room, check if the target room exists.
-     * If not, generate it and override its BACK door to point back to the source room.
+     * Attempt a synchronous cloud fetch for room data.
+     * Returns null if cloud is not configured, the fetch fails, or no data exists.
+     * Uses a short timeout to avoid blocking gameplay for too long.
      */
-    private void ensureBidirectionalDoors(Room sourceRoom, int playerLevel) {
-        for (java.util.Map.Entry<String, String> entry : sourceRoom.getDoors().entrySet()) {
-            String dirName = entry.getKey();
-            String targetId = entry.getValue();
-            if (targetId == null || dirName.equals("BACK")) continue;
+    private Room fetchRoomFromCloud(String roomId) {
+        if (!cloudClient.isConfigured()) return null;
 
-            // If target room already exists, don't overwrite it
-            if (roomFileManager.roomExists(targetId)) continue;
+        try {
+            SyncResult result = cloudClient.getRoom(roomId);
+            if (result.isSuccess() && result.getData() != null) {
+                Room room = JsonHelper.fromJson(result.getData(), Room.class);
+                return room;
+            }
+        } catch (Exception e) {
+            // Cloud fetch failed — fall through to local/generate
+        }
+        return null;
+    }
 
-            int targetRegion = RoomIdHelper.getRegion(targetId);
-            int targetNumber = RoomIdHelper.getRoomNumber(targetId);
+    /**
+     * Overwrite a room's doors with the connections defined in the WorldMesh.
+     * This ensures the pre-generated linked list structure is always authoritative
+     * for room layout, even when room content comes from cloud.
+     */
+    private void applyMeshDoors(Room room, int region, int roomNumber) {
+        WorldMesh mesh = WorldMesh.getInstance();
+        Map<Direction, String> meshDoors = mesh.getNeighbors(region, roomNumber);
 
-            if (targetRegion == 0) continue; // Don't regenerate hub
-
-            Room targetRoom = roomGenerator.generateRoom(targetRegion, targetNumber, playerLevel);
-            // Override the BACK door to point back to source room
-            targetRoom.getDoors().put("BACK", sourceRoom.getRoomId());
-            roomFileManager.saveRoom(targetRoom);
+        if (!meshDoors.isEmpty()) {
+            room.getDoors().clear();
+            for (Map.Entry<Direction, String> entry : meshDoors.entrySet()) {
+                room.addDoor(entry.getKey(), entry.getValue());
+            }
         }
     }
 
