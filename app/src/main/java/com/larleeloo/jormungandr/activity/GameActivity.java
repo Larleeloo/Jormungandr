@@ -20,6 +20,7 @@ import com.larleeloo.jormungandr.fragment.CharacterFragment;
 import com.larleeloo.jormungandr.fragment.CombatFragment;
 import com.larleeloo.jormungandr.fragment.HubFragment;
 import com.larleeloo.jormungandr.fragment.InventoryFragment;
+import com.larleeloo.jormungandr.fragment.LoadingFragment;
 import com.larleeloo.jormungandr.fragment.MapFragment;
 import com.larleeloo.jormungandr.fragment.RoomFragment;
 import com.larleeloo.jormungandr.model.Player;
@@ -27,6 +28,9 @@ import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.util.Constants;
 
 public class GameActivity extends AppCompatActivity {
+
+    /** Minimum time (ms) to display the loading screen between rooms. */
+    private static final long LOADING_SCREEN_MIN_MS = 1200;
 
     private TextView hudHp, hudMana, hudStamina, hudLevel, syncIndicator;
     private Button btnInventory, btnCharacter, btnMap, btnRoom;
@@ -97,6 +101,9 @@ public class GameActivity extends AppCompatActivity {
     }
 
     public void navigateToRoom(String roomId) {
+        // Show loading screen with random item/creature
+        showFragment(new LoadingFragment(), "loading");
+
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
 
@@ -105,6 +112,8 @@ public class GameActivity extends AppCompatActivity {
         if (leavingRoom != null && player != null && cloudSyncManager != null) {
             cloudSyncManager.syncRoomToCloud(leavingRoom, null); // fire-and-forget
         }
+
+        long loadStart = System.currentTimeMillis();
 
         // Navigate (loads/generates the new room locally)
         Room room = repo.navigateToRoom(roomId);
@@ -115,14 +124,19 @@ public class GameActivity extends AppCompatActivity {
             showSyncStatus(true, "Syncing...");
             cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
                     showSyncStatus(success, message));
-            // Try to fetch room from cloud in background (won't block gameplay)
             cloudSyncManager.syncRoomFromCloud(roomId, null);
         }
 
-        showFragment(new RoomFragment(), "room");
+        // Show loading screen for at least LOADING_SCREEN_MIN_MS
+        long elapsed = System.currentTimeMillis() - loadStart;
+        long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
+        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
     }
 
     public void navigateBack() {
+        // Show loading screen with random item/creature
+        showFragment(new LoadingFragment(), "loading");
+
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
 
@@ -131,6 +145,8 @@ public class GameActivity extends AppCompatActivity {
         if (leavingRoom != null && player != null && cloudSyncManager != null) {
             cloudSyncManager.syncRoomToCloud(leavingRoom, null);
         }
+
+        long loadStart = System.currentTimeMillis();
 
         // Pop from history stack instead of using BACK door target
         Room room = repo.navigateBack();
@@ -145,7 +161,10 @@ public class GameActivity extends AppCompatActivity {
             }
         }
 
-        showFragment(new RoomFragment(), "room");
+        // Show loading screen for at least LOADING_SCREEN_MIN_MS
+        long elapsed = System.currentTimeMillis() - loadStart;
+        long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
+        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
     }
 
     public void startCombat(String creatureDefId, int level, int hp) {

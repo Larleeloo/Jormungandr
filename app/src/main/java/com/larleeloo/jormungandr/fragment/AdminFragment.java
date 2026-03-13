@@ -18,6 +18,7 @@ import com.larleeloo.jormungandr.activity.GameActivity;
 import com.larleeloo.jormungandr.cloud.AccessCodeValidator;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
+import com.larleeloo.jormungandr.engine.MeshExporter;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.util.Constants;
 
@@ -25,7 +26,7 @@ public class AdminFragment extends Fragment {
 
     private CloudSyncManager cloudSyncManager;
     private TextView adminStatus;
-    private Button btnResetRooms, btnResetNotes, btnResetPlayers;
+    private Button btnResetRooms, btnResetNotes, btnResetPlayers, btnExportMesh;
 
     @Nullable
     @Override
@@ -44,6 +45,7 @@ public class AdminFragment extends Fragment {
         btnResetRooms = view.findViewById(R.id.btn_reset_rooms);
         btnResetNotes = view.findViewById(R.id.btn_reset_notes);
         btnResetPlayers = view.findViewById(R.id.btn_reset_players);
+        btnExportMesh = view.findViewById(R.id.btn_export_mesh);
 
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
@@ -71,6 +73,12 @@ public class AdminFragment extends Fragment {
                 "Reset All Player Saves",
                 "This will delete ALL player save data from the cloud. Every player will need to create a new character.\n\nAre you sure?",
                 () -> resetAllPlayers(accessCode)
+        ));
+
+        btnExportMesh.setOnClickListener(v -> confirmAndExecute(
+                "Export World Mesh",
+                "This will generate the full 80,000-room mesh reference and upload it to Drive as a single JSON file.\n\nThis is a one-time operation. Continue?",
+                this::exportMesh
         ));
     }
 
@@ -117,6 +125,16 @@ public class AdminFragment extends Fragment {
         });
     }
 
+    private void exportMesh() {
+        disableAllButtons();
+        showStatus("Generating mesh reference (this may take a moment)...", true);
+
+        MeshExporter.exportAndUpload(requireContext(), (success, message) -> {
+            showStatus(message, success);
+            enableAllButtons();
+        });
+    }
+
     private void sendPlayerToHub() {
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
@@ -152,12 +170,14 @@ public class AdminFragment extends Fragment {
         btnResetRooms.setEnabled(false);
         btnResetNotes.setEnabled(false);
         btnResetPlayers.setEnabled(false);
+        btnExportMesh.setEnabled(false);
     }
 
     private void enableAllButtons() {
         btnResetRooms.setEnabled(true);
         btnResetNotes.setEnabled(true);
         btnResetPlayers.setEnabled(true);
+        btnExportMesh.setEnabled(true);
     }
 
     @Override

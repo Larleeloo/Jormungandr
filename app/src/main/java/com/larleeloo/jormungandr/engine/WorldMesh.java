@@ -5,13 +5,29 @@ import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 import com.larleeloo.jormungandr.util.SeededRandom;
 
+import android.content.Context;
+import android.util.Log;
+
+import com.larleeloo.jormungandr.cloud.AppsScriptClient;
+import com.larleeloo.jormungandr.cloud.SyncResult;
+import com.larleeloo.jormungandr.data.LocalCache;
+
+import org.json.JSONObject;
+
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Pre-generated branching linked list of all 80,000 rooms across 8 regions.
- * Built once at startup using the deterministic WORLD_SEED so every client
- * produces an identical room layout.
+ * World room layout graph for all 80,000 rooms across 8 regions.
+ *
+ * Two modes of operation:
+ *   1. <b>Full build</b> — builds the entire mesh in-memory from WORLD_SEED.
+ *      Used once via {@link MeshExporter} to generate the reference JSON.
+ *   2. <b>Lazy reference</b> — loads only the room neighbors needed from a
+ *      cached JSON reference file (local or Drive), keeping heap usage minimal.
+ *      This is the normal runtime mode after the reference exists.
  *
  * The mesh is a graph of {@link RoomNode} objects where each node holds a
  * room number and references 1-4 neighboring rooms by ID. Room content
@@ -22,38 +38,113 @@ import java.util.Map;
  *   - Branches: rooms BRANCH_ID_START+ grow off trunk rooms and sub-branch
  *     recursively up to MAX_BRANCH_DEPTH.
  *   - Cross-region links: small chance any branch leads to another region.
- *
- * When a player enters a room the game checks Drive cloud storage for room
- * data first. If none exists, data is generated based on the room's position
- * in this mesh.
  */
 public class WorldMesh {
 
+    private static final String TAG = "WorldMesh";
+    private static final String MESH_LOCAL_PATH = "mesh/world_mesh_reference.json";
+
     private static WorldMesh instance;
 
-    /** All room nodes keyed by room ID (e.g. "r1_00050"). */
+    /** All room nodes keyed by room ID (e.g. "r1_00050"). Used in full-build mode. */
     private final Map<String, RoomNode> nodes = new HashMap<>();
+
+    /** Parsed reference JSON — loaded lazily from local cache or Drive. */
+    private JSONObject referenceJson;
+
+    /** True if operating in lazy-reference mode (no full node map in heap). */
+    private boolean lazyMode;
 
     /** Tracks the next branch room ID to allocate per region during build. */
     private int nextBranchId;
 
+    /** Total room count from the reference file (avoids iterating all keys). */
+    private int refTotalRooms;
+
     private WorldMesh() {
-        buildMesh();
+        // Empty — call buildMesh() or loadReference() after construction
     }
 
+    /**
+     * Get the singleton instance. On first access, attempts to load the
+     * reference file (lazy mode). Falls back to full in-memory build if
+     * no reference exists yet.
+     */
     public static synchronized WorldMesh getInstance() {
         if (instance == null) {
             instance = new WorldMesh();
+            instance.buildMesh(); // fallback: full build
         }
         return instance;
     }
 
     /**
-     * Look up a room node by its ID. Returns null if the room is not part
-     * of the pre-generated mesh (shouldn't happen for valid room IDs).
+     * Initialize from a local/cloud reference file. Call this early (e.g. in
+     * GameRepository init) with a Context so we can read from LocalCache.
+     * Returns true if reference was loaded successfully (lazy mode active).
+     */
+    public static synchronized boolean initFromReference(Context context) {
+        if (instance != null) return instance.lazyMode;
+
+        instance = new WorldMesh();
+        if (instance.loadReference(context)) {
+            Log.i(TAG, "Loaded mesh reference (lazy mode). Rooms: " + instance.refTotalRooms);
+            return true;
+        }
+
+        // No reference — fall back to full build
+        Log.i(TAG, "No mesh reference found. Building full mesh in memory.");
+        instance.buildMesh();
+        return false;
+    }
+
+    /**
+     * Load reference JSON from local cache, or try Drive if not cached locally.
+     */
+    private boolean loadReference(Context context) {
+        LocalCache cache = new LocalCache(context);
+        String json = cache.loadGeneric(MESH_LOCAL_PATH);
+
+        // Try Drive if not local
+        if (json == null || json.isEmpty()) {
+            AppsScriptClient client = new AppsScriptClient();
+            if (client.isConfigured()) {
+                try {
+                    SyncResult result = client.getMeshReference();
+                    if (result.isSuccess() && result.getData() != null) {
+                        json = result.getData();
+                        // Cache locally for future starts
+                        cache.saveGeneric(MESH_LOCAL_PATH, json);
+                        Log.i(TAG, "Downloaded mesh reference from Drive and cached locally");
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to fetch mesh reference from Drive", e);
+                }
+            }
+        }
+
+        if (json == null || json.isEmpty()) return false;
+
+        try {
+            referenceJson = new JSONObject(json);
+            refTotalRooms = referenceJson.optInt("totalRooms", 0);
+            lazyMode = true;
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to parse mesh reference JSON", e);
+            return false;
+        }
+    }
+
+    /**
+     * Look up a room node by its ID. In lazy mode, constructs a RoomNode
+     * on demand from the reference JSON without caching it in the nodes map.
      */
     public RoomNode getNode(String roomId) {
-        return nodes.get(roomId);
+        if (!lazyMode) {
+            return nodes.get(roomId);
+        }
+        return buildNodeFromReference(roomId);
     }
 
     /**
@@ -61,9 +152,12 @@ public class WorldMesh {
      * is not in the mesh.
      */
     public Map<Direction, String> getNeighbors(String roomId) {
-        RoomNode node = nodes.get(roomId);
-        if (node == null) return new HashMap<>();
-        return node.getNeighbors();
+        if (!lazyMode) {
+            RoomNode node = nodes.get(roomId);
+            if (node == null) return new HashMap<>();
+            return node.getNeighbors();
+        }
+        return getNeighborsFromReference(roomId);
     }
 
     /**
@@ -77,13 +171,17 @@ public class WorldMesh {
      * Check if a room exists in the pre-generated mesh.
      */
     public boolean hasRoom(String roomId) {
-        return nodes.containsKey(roomId);
+        if (!lazyMode) {
+            return nodes.containsKey(roomId);
+        }
+        return hasRoomInReference(roomId);
     }
 
     /**
      * Total number of rooms in the mesh.
      */
     public int getTotalRoomCount() {
+        if (lazyMode) return refTotalRooms;
         return nodes.size();
     }
 
@@ -91,11 +189,85 @@ public class WorldMesh {
      * Number of rooms in a specific region.
      */
     public int getRegionRoomCount(int region) {
+        if (lazyMode) {
+            try {
+                JSONObject regions = referenceJson.getJSONObject("regions");
+                JSONObject regionObj = regions.optJSONObject(String.valueOf(region));
+                return regionObj != null ? regionObj.length() : 0;
+            } catch (Exception e) {
+                return 0;
+            }
+        }
         int count = 0;
         for (RoomNode node : nodes.values()) {
             if (node.getRegion() == region) count++;
         }
         return count;
+    }
+
+    /**
+     * Get all nodes. Only available in full-build mode (used by MeshExporter).
+     */
+    public Map<String, RoomNode> getAllNodes() {
+        return Collections.unmodifiableMap(nodes);
+    }
+
+    /**
+     * Whether the mesh is operating in lazy-reference mode.
+     */
+    public boolean isLazyMode() {
+        return lazyMode;
+    }
+
+    // ---- Lazy-reference lookups ----
+
+    private Map<Direction, String> getNeighborsFromReference(String roomId) {
+        try {
+            int region = RoomIdHelper.getRegion(roomId);
+            JSONObject regions = referenceJson.getJSONObject("regions");
+            JSONObject regionObj = regions.optJSONObject(String.valueOf(region));
+            if (regionObj == null) return new HashMap<>();
+
+            JSONObject roomObj = regionObj.optJSONObject(roomId);
+            if (roomObj == null) return new HashMap<>();
+
+            Map<Direction, String> neighbors = new HashMap<>();
+            Iterator<String> keys = roomObj.keys();
+            while (keys.hasNext()) {
+                String dirName = keys.next();
+                try {
+                    Direction dir = Direction.valueOf(dirName);
+                    neighbors.put(dir, roomObj.getString(dirName));
+                } catch (IllegalArgumentException ignored) {}
+            }
+            return neighbors;
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+
+    private boolean hasRoomInReference(String roomId) {
+        try {
+            int region = RoomIdHelper.getRegion(roomId);
+            JSONObject regions = referenceJson.getJSONObject("regions");
+            JSONObject regionObj = regions.optJSONObject(String.valueOf(region));
+            return regionObj != null && regionObj.has(roomId);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private RoomNode buildNodeFromReference(String roomId) {
+        Map<Direction, String> neighbors = getNeighborsFromReference(roomId);
+        if (neighbors.isEmpty()) return null;
+
+        int region = RoomIdHelper.getRegion(roomId);
+        int roomNumber = RoomIdHelper.getRoomNumber(roomId);
+        RoomNode node = new RoomNode(region, roomNumber);
+        for (Map.Entry<Direction, String> entry : neighbors.entrySet()) {
+            node.addNeighbor(entry.getKey(), entry.getValue());
+        }
+        return node;
     }
 
     // ---- Mesh construction ----

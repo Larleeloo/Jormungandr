@@ -56,8 +56,8 @@ public class GameRepository {
 
         this.roomGenerator = new RoomGenerator(itemRegistry, creatureRegistry);
 
-        // Initialize the WorldMesh so the linked list is ready before any room loads
-        WorldMesh.getInstance();
+        // Try loading mesh from reference file (lazy mode) before falling back to full build
+        WorldMesh.initFromReference(context);
     }
 
     public static synchronized GameRepository getInstance(Context context) {

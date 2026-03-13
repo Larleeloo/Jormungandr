@@ -133,6 +133,41 @@
                 android:layout_marginTop="8dp" />
         </LinearLayout>
 
+        <!-- Export World Mesh Reference -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Export World Mesh Reference"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="One-time tool: generates all 80,000 room connections as a single JSON file and uploads it to Drive. After export, the app loads the mesh from this reference instead of building it in memory."
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btn_export_mesh"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Export Mesh to Drive"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#228B22"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
         <!-- Status -->
         <TextView
             android:id="@+id/admin_status"
