@@ -1,10 +1,19 @@
 package com.larleeloo.jormungandr.util;
 
+/**
+ * Helpers for room ID parsing and grid coordinate calculations.
+ * Room IDs follow the format "r{region}_{5-digit-number}" (e.g. "r1_00050").
+ * In a 100x100 grid, room number = row * GRID_SIZE + col.
+ */
 public final class RoomIdHelper {
     private RoomIdHelper() {}
 
     public static String makeRoomId(int region, int number) {
         return String.format("r%d_%05d", region, number);
+    }
+
+    public static String makeRoomId(int region, int row, int col) {
+        return makeRoomId(region, row * Constants.GRID_SIZE + col);
     }
 
     public static int getRegion(String roomId) {
@@ -25,47 +34,46 @@ public final class RoomIdHelper {
         }
     }
 
-    /**
-     * Returns true if the room is on the main trunk (IDs 0 to TRUNK_LENGTH-1).
-     */
-    public static boolean isTrunkRoom(int roomNumber) {
-        return roomNumber < Constants.TRUNK_LENGTH;
+    /** Grid row (0-99) from room number. */
+    public static int getRow(int roomNumber) {
+        return roomNumber / Constants.GRID_SIZE;
     }
 
-    public static boolean isTrunkRoom(String roomId) {
-        return isTrunkRoom(getRoomNumber(roomId));
+    /** Grid column (0-99) from room number. */
+    public static int getCol(int roomNumber) {
+        return roomNumber % Constants.GRID_SIZE;
+    }
+
+    public static int getRow(String roomId) {
+        return getRow(getRoomNumber(roomId));
+    }
+
+    public static int getCol(String roomId) {
+        return getCol(getRoomNumber(roomId));
+    }
+
+    /** Room number from grid coordinates. */
+    public static int toRoomNumber(int row, int col) {
+        return row * Constants.GRID_SIZE + col;
     }
 
     /**
-     * Compute a difficulty tier (1-5) based on position in the tree.
-     * Trunk rooms scale from tier 1 (start) to tier 3 (end).
-     * Branch rooms scale from tier 2 (shallow) to tier 5 (deep).
-     * The zone field on Room is populated with this value for backward compat.
+     * Difficulty tier (1-5) based on Manhattan distance from the grid origin (0,0).
+     * Closer to origin = easier, farther = harder.
      */
     public static int getDifficultyTier(int region, int roomNumber) {
-        if (isTrunkRoom(roomNumber)) {
-            // Trunk: tier 1 for first third, tier 2 for middle, tier 3 for last third
-            float progress = (float) roomNumber / Constants.TRUNK_LENGTH;
-            if (progress < 0.33f) return 1;
-            if (progress < 0.66f) return 2;
-            return 3;
-        }
-        // Branch rooms: estimate depth from how far the ID is from BRANCH_ID_START
-        // This is an approximation; actual depth is tracked by MeshGenerator
-        // We use a hash-based approach to get a stable "depth" value
-        SeededRandom depthRng = new SeededRandom(SeededRandom.hashSeed(region, roomNumber));
-        int estimatedDepth = depthRng.nextIntRange(1, Constants.MAX_BRANCH_DEPTH);
-        if (estimatedDepth <= 10) return 2;
-        if (estimatedDepth <= 20) return 3;
-        if (estimatedDepth <= 30) return 4;
+        int row = getRow(roomNumber);
+        int col = getCol(roomNumber);
+        int dist = row + col; // Manhattan distance from (0,0)
+        if (dist < 25) return 1;
+        if (dist < 50) return 2;
+        if (dist < 100) return 3;
+        if (dist < 150) return 4;
         return 5;
     }
 
-    /**
-     * @deprecated Use getDifficultyTier instead. Kept for backward compat with Room.zone field.
-     */
+    /** @deprecated Use getDifficultyTier instead. */
     public static int getZone(int roomNumber) {
-        // Map to difficulty tier using a default region of 1
         return getDifficultyTier(1, roomNumber);
     }
 
@@ -74,12 +82,15 @@ public final class RoomIdHelper {
     }
 
     /**
-     * Returns true if this trunk room is a waypoint (multiples of WAYPOINT_INTERVAL).
-     * Room 0 is NOT a waypoint (that's the region entrance from hub).
+     * Waypoints are rooms at grid positions where both row and col are
+     * multiples of WAYPOINT_SPACING (e.g. (0,0), (0,10), (10,0), (10,10), ...).
+     * Room (0,0) IS a waypoint (the region entrance).
      */
     public static boolean isWaypoint(int roomNumber) {
-        return isTrunkRoom(roomNumber) && roomNumber > 0
-                && roomNumber % Constants.WAYPOINT_INTERVAL == 0;
+        int row = getRow(roomNumber);
+        int col = getCol(roomNumber);
+        return row % Constants.WAYPOINT_SPACING == 0
+                && col % Constants.WAYPOINT_SPACING == 0;
     }
 
     public static boolean isWaypoint(String roomId) {

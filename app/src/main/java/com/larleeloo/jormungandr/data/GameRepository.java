@@ -198,15 +198,6 @@ public class GameRepository {
                 currentPlayer.setPreviousRoomId(oldRoomId);
             }
 
-            // Set BACK door based on top of history stack
-            if (room != null && !RoomIdHelper.isHub(roomId)) {
-                java.util.List<String> history = currentPlayer.getRoomHistory();
-                String backTarget = history.isEmpty() ? Constants.HUB_ROOM_ID
-                        : history.get(history.size() - 1);
-                room.getDoors().put("BACK", backTarget);
-                roomFileManager.saveRoom(room);
-            }
-
             currentPlayer.setCurrentRoomId(roomId);
             currentPlayer.setCurrentRegion(RoomIdHelper.getRegion(roomId));
             currentPlayer.discoverRoom(roomId, RoomIdHelper.getRegion(roomId));
