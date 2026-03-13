@@ -44,7 +44,7 @@ public class RoomGenerator {
         room.setBackgroundId(generateBackgroundId(region, rng));
 
         // Check if waypoint
-        room.setWaypoint(RoomIdHelper.isWaypoint(roomNumber));
+        room.setWaypoint(RoomIdHelper.isWaypoint(region, roomNumber));
 
         // Generate doors via MeshGenerator
         Map<Direction, String> doors = MeshGenerator.generateDoors(region, roomNumber);

@@ -168,31 +168,11 @@ public class GameRepository {
 
     // ---- Navigation ----
 
-    /**
-     * Navigate using BACK door — pops from history instead of pushing.
-     */
-    public Room navigateBack() {
-        if (currentPlayer == null) return null;
-        String previousRoom = currentPlayer.popRoomFromHistory();
-        if (previousRoom == null) {
-            previousRoom = Constants.HUB_ROOM_ID;
-        }
-        return navigateToRoomInternal(previousRoom, true);
-    }
-
     public Room navigateToRoom(String roomId) {
-        return navigateToRoomInternal(roomId, false);
-    }
-
-    private Room navigateToRoomInternal(String roomId, boolean isBackNavigation) {
         Room room = loadOrGenerateRoom(roomId);
 
         if (currentPlayer != null) {
             String oldRoomId = currentPlayer.getCurrentRoomId();
-
-            if (!isBackNavigation && oldRoomId != null && !oldRoomId.equals(roomId)) {
-                currentPlayer.pushRoomToHistory(oldRoomId);
-            }
 
             if (oldRoomId != null && !oldRoomId.equals(roomId)) {
                 currentPlayer.setPreviousRoomId(oldRoomId);
@@ -206,7 +186,6 @@ public class GameRepository {
 
             if (RoomIdHelper.isHub(roomId)) {
                 currentPlayer.setRoomsVisitedSinceHub(0);
-                currentPlayer.getRoomHistory().clear();
                 currentPlayer.setStamina(currentPlayer.getMaxStamina());
             } else if (room != null && room.isWaypoint()) {
                 currentPlayer.setStamina(currentPlayer.getMaxStamina());

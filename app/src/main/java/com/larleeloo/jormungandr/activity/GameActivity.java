@@ -133,40 +133,6 @@ public class GameActivity extends AppCompatActivity {
         syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
     }
 
-    public void navigateBack() {
-        // Show loading screen with random item/creature
-        showFragment(new LoadingFragment(), "loading");
-
-        GameRepository repo = GameRepository.getInstance(this);
-        Player player = repo.getCurrentPlayer();
-
-        // Upload the room we're LEAVING to cloud (lazy sync)
-        Room leavingRoom = repo.getCurrentRoom();
-        if (leavingRoom != null && player != null && cloudSyncManager != null) {
-            cloudSyncManager.syncRoomToCloud(leavingRoom, null);
-        }
-
-        long loadStart = System.currentTimeMillis();
-
-        // Pop from history stack instead of using BACK door target
-        Room room = repo.navigateBack();
-        updateHud();
-
-        if (player != null && cloudSyncManager != null) {
-            showSyncStatus(true, "Syncing...");
-            cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
-                    showSyncStatus(success, message));
-            if (room != null) {
-                cloudSyncManager.syncRoomFromCloud(room.getRoomId(), null);
-            }
-        }
-
-        // Show loading screen for at least LOADING_SCREEN_MIN_MS
-        long elapsed = System.currentTimeMillis() - loadStart;
-        long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
-        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
-    }
-
     public void startCombat(String creatureDefId, int level, int hp) {
         CombatFragment combat = CombatFragment.newInstance(creatureDefId, level, hp);
         showFragment(combat, "combat");

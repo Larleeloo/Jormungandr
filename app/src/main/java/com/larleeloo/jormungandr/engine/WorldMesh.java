@@ -206,9 +206,9 @@ public class WorldMesh {
 
     private void buildHub() {
         RoomNode hub = new RoomNode(0, 0);
-        hub.addNeighbor(Direction.FORWARD, RoomIdHelper.makeRoomId(1, 0));
-        hub.addNeighbor(Direction.LEFT, RoomIdHelper.makeRoomId(8, 0));
-        hub.addNeighbor(Direction.RIGHT, RoomIdHelper.makeRoomId(2, 0));
+        hub.addNeighbor(Direction.NORTH, RoomIdHelper.makeRoomId(1, 0));
+        hub.addNeighbor(Direction.WEST, RoomIdHelper.makeRoomId(8, 0));
+        hub.addNeighbor(Direction.EAST, RoomIdHelper.makeRoomId(2, 0));
         putNode(hub);
     }
 

@@ -8,6 +8,18 @@ package com.larleeloo.jormungandr.util;
 public final class RoomIdHelper {
     private RoomIdHelper() {}
 
+    /**
+     * Number of waypoints scattered per region.
+     * They are placed at seeded-random positions, never at the region entrance (0,0).
+     */
+    private static final int WAYPOINTS_PER_REGION = 50;
+
+    /**
+     * Pre-computed waypoint room numbers per region (lazily built).
+     * waypointSets[region] is a sorted array of room numbers that are waypoints.
+     */
+    private static final int[][] waypointSets = new int[Constants.NUM_REGIONS + 1][];
+
     public static String makeRoomId(int region, int number) {
         return String.format("r%d_%05d", region, number);
     }
@@ -82,19 +94,89 @@ public final class RoomIdHelper {
     }
 
     /**
-     * Waypoints are rooms at grid positions where both row and col are
-     * multiples of WAYPOINT_SPACING (e.g. (0,0), (0,10), (10,0), (10,10), ...).
-     * Room (0,0) IS a waypoint (the region entrance).
+     * Waypoints are placed at seeded-random positions within each region.
+     * There are ~50 per region, scattered throughout the grid so that
+     * players must explore to find them. The region entrance (0,0) is NOT
+     * a waypoint.
      */
     public static boolean isWaypoint(int roomNumber) {
-        int row = getRow(roomNumber);
-        int col = getCol(roomNumber);
-        return row % Constants.WAYPOINT_SPACING == 0
-                && col % Constants.WAYPOINT_SPACING == 0;
+        // Hub room is always a waypoint
+        return false; // region-unaware overload — use the region-aware version
+    }
+
+    public static boolean isWaypoint(int region, int roomNumber) {
+        if (region <= 0) return false;
+        if (region > Constants.NUM_REGIONS) return false;
+        // Room (0,0) is the region entrance — never a waypoint
+        if (roomNumber == 0) return false;
+
+        int[] set = getWaypointSet(region);
+        return java.util.Arrays.binarySearch(set, roomNumber) >= 0;
     }
 
     public static boolean isWaypoint(String roomId) {
-        return isWaypoint(getRoomNumber(roomId));
+        return isWaypoint(getRegion(roomId), getRoomNumber(roomId));
+    }
+
+    /**
+     * Get the pre-computed waypoint room numbers for a region.
+     */
+    public static int[] getWaypointSet(int region) {
+        if (region < 1 || region > Constants.NUM_REGIONS) return new int[0];
+        if (waypointSets[region] == null) {
+            waypointSets[region] = buildWaypointSet(region);
+        }
+        return waypointSets[region];
+    }
+
+    /**
+     * Build waypoint positions deterministically using a seeded LCG.
+     * Scatters WAYPOINTS_PER_REGION waypoints across the grid, avoiding (0,0)
+     * and ensuring no duplicates.
+     */
+    private static int[] buildWaypointSet(int region) {
+        // Simple seeded LCG for deterministic placement
+        long seed = Constants.WORLD_SEED ^ ((long) region << 32) ^ WAYPOINT_SEED_MIX;
+
+        java.util.Set<Integer> positions = new java.util.LinkedHashSet<>();
+        int totalCells = Constants.GRID_SIZE * Constants.GRID_SIZE;
+        int attempts = 0;
+
+        while (positions.size() < WAYPOINTS_PER_REGION && attempts < WAYPOINTS_PER_REGION * 10) {
+            seed = lcgNext(seed);
+            int candidate = (int) ((seed >>> 16) % totalCells);
+            // Skip the entrance room (0,0) = room number 0
+            if (candidate == 0) { attempts++; continue; }
+            // Ensure some minimum spacing (Manhattan distance >= 5 from all existing)
+            int row = getRow(candidate);
+            int col = getCol(candidate);
+            boolean tooClose = false;
+            for (int existing : positions) {
+                int er = getRow(existing);
+                int ec = getCol(existing);
+                if (Math.abs(row - er) + Math.abs(col - ec) < 5) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) {
+                positions.add(candidate);
+            }
+            attempts++;
+        }
+
+        int[] result = new int[positions.size()];
+        int i = 0;
+        for (int p : positions) result[i++] = p;
+        java.util.Arrays.sort(result);
+        return result;
+    }
+
+    // Hex literal workaround: 0xWAYPOINT doesn't compile, use a constant
+    private static final long WAYPOINT_SEED_MIX = 0x574159504F494E54L;
+
+    private static long lcgNext(long seed) {
+        return seed * 6364136223846793005L + 1442695040888963407L;
     }
 
     public static boolean isHub(String roomId) {

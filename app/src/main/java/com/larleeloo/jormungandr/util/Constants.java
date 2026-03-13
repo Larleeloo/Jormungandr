@@ -23,7 +23,6 @@ public final class Constants {
     public static final int GRID_SIZE = 100;
     public static final double MAZE_EXTRA_CONNECTION_CHANCE = 0.08;
     public static final double PORTAL_CHANCE = 0.02;
-    public static final int WAYPOINT_SPACING = 10;
 
     // Room generation
     public static final double CREATURE_DEN_CHANCE = 0.20;
