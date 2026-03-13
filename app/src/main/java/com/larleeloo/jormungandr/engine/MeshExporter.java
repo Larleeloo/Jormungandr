@@ -1,15 +1,12 @@
 package com.larleeloo.jormungandr.engine;
 
-import android.content.Context;
 import android.util.Log;
 
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
 import com.larleeloo.jormungandr.cloud.SyncResult;
-import com.larleeloo.jormungandr.data.LocalCache;
 import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.util.Constants;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.Map;
@@ -18,17 +15,12 @@ import java.util.concurrent.Executors;
 
 /**
  * One-time tool to export the full WorldMesh as a single JSON reference file.
- * Generates the mesh in memory, serializes it to JSON, saves locally, and
- * uploads to Drive as a single file (world_mesh_reference.json).
- *
- * After this runs once, the mesh reference lives in Drive and can be downloaded
- * on future app starts instead of rebuilding 80,000 nodes in heap memory.
+ * Generates the mesh in memory, serializes it to JSON, and uploads to Drive.
+ * No local files are stored.
  */
 public class MeshExporter {
 
     private static final String TAG = "MeshExporter";
-    public static final String MESH_REFERENCE_FILE = "world_mesh_reference.json";
-    private static final String LOCAL_PATH = "mesh/" + MESH_REFERENCE_FILE;
 
     public interface ExportCallback {
         void onComplete(boolean success, String message);
@@ -36,20 +28,8 @@ public class MeshExporter {
 
     /**
      * Export the full WorldMesh to a JSON string.
-     * Structure:
-     * {
-     *   "seed": "0x4A6F726D756E4C",
-     *   "version": "1.0",
-     *   "totalRooms": 80001,
-     *   "regions": {
-     *     "0": { "r0_00000": { "FORWARD":"r1_00000", "LEFT":"r8_00000", "RIGHT":"r2_00000" } },
-     *     "1": { "r1_00000": { ... }, ... },
-     *     ...
-     *   }
-     * }
      */
     public static String exportToJson() {
-        // Build the mesh in memory (deterministic from seed)
         WorldMesh mesh = WorldMesh.getInstance();
 
         try {
@@ -58,13 +38,11 @@ public class MeshExporter {
             root.put("version", Constants.GAME_VERSION);
             root.put("totalRooms", mesh.getTotalRoomCount());
 
-            // Group rooms by region
             JSONObject regions = new JSONObject();
             for (int region = 0; region <= Constants.NUM_REGIONS; region++) {
                 regions.put(String.valueOf(region), new JSONObject());
             }
 
-            // Iterate all nodes and serialize neighbors
             for (Map.Entry<String, RoomNode> entry : mesh.getAllNodes().entrySet()) {
                 String roomId = entry.getKey();
                 RoomNode node = entry.getValue();
@@ -89,9 +67,10 @@ public class MeshExporter {
     }
 
     /**
-     * Export mesh, save locally, and upload to Drive. Runs on a background thread.
+     * Export mesh and upload to Drive. Runs on a background thread.
+     * No local file is saved.
      */
-    public static void exportAndUpload(Context context, ExportCallback callback) {
+    public static void exportAndUpload(ExportCallback callback) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
             String json = exportToJson();
@@ -103,38 +82,23 @@ public class MeshExporter {
             Log.i(TAG, "Mesh exported: " + json.length() + " bytes, " +
                     WorldMesh.getInstance().getTotalRoomCount() + " rooms");
 
-            // Save locally
-            LocalCache cache = new LocalCache(context);
-            cache.saveGeneric(LOCAL_PATH, json);
-            Log.i(TAG, "Mesh reference saved locally");
-
-            // Upload to Drive as a single file
             AppsScriptClient client = new AppsScriptClient();
             if (!client.isConfigured()) {
-                postCallback(callback, true,
-                        "Mesh saved locally. Cloud not configured — set APPS_SCRIPT_URL to upload.");
+                postCallback(callback, false,
+                        "Cloud not configured — set APPS_SCRIPT_URL to upload mesh reference.");
                 return;
             }
 
             SyncResult result = client.saveMeshReference(json);
             if (result.isSuccess()) {
                 postCallback(callback, true,
-                        "Mesh reference exported and uploaded to Drive (" + json.length() + " bytes)");
+                        "Mesh reference uploaded to Drive (" + json.length() + " bytes)");
             } else {
                 postCallback(callback, false,
-                        "Mesh saved locally but Drive upload failed: " + result.getMessage());
+                        "Drive upload failed: " + result.getMessage());
             }
         });
         executor.shutdown();
-    }
-
-    /**
-     * Check if a local mesh reference file already exists.
-     */
-    public static boolean localReferenceExists(Context context) {
-        LocalCache cache = new LocalCache(context);
-        String data = cache.loadGeneric(LOCAL_PATH);
-        return data != null && !data.isEmpty();
     }
 
     private static void postCallback(ExportCallback callback, boolean success, String message) {

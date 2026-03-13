@@ -1,11 +1,10 @@
 package com.larleeloo.jormungandr.data;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
-import com.larleeloo.jormungandr.cloud.SyncResult;
 import com.larleeloo.jormungandr.engine.RoomGenerator;
-import com.larleeloo.jormungandr.engine.RoomNode;
 import com.larleeloo.jormungandr.engine.WorldMesh;
 import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.Player;
@@ -17,47 +16,44 @@ import com.larleeloo.jormungandr.util.RoomIdHelper;
 import java.util.Map;
 
 /**
- * Singleton coordinating all game data access.
+ * Singleton coordinating all game data access — fully cloud-backed.
  *
  * Room loading priority:
  *   1. Check Drive cloud storage for existing room data
- *   2. Check local cache
- *   3. Generate room content based on the room's position in the pre-built WorldMesh
+ *   2. Generate room content based on the room's position in the pre-built WorldMesh
  *
- * The WorldMesh (a pre-generated branching linked list of all 80,000 rooms) defines
- * which rooms connect to which. Room content (creatures, loot, traps) is generated
- * on demand when a room is first visited and no cloud data exists for it.
+ * No local files are stored. All persistence goes through the Apps Script backend
+ * to Google Drive, eliminating stale-cache issues between versions.
  */
 public class GameRepository {
+    private static final String TAG = "GameRepository";
     private static GameRepository instance;
 
-    private final LocalCache localCache;
     private final ItemRegistry itemRegistry;
     private final CreatureRegistry creatureRegistry;
     private final RoomFileManager roomFileManager;
     private final PlayerFileManager playerFileManager;
-    private final RoomGenerator roomGenerator;
     private final AppsScriptClient cloudClient;
+    private final RoomGenerator roomGenerator;
 
     private Player currentPlayer;
     private Room currentRoom;
 
     private GameRepository(Context context) {
-        this.localCache = new LocalCache(context);
+        this.cloudClient = new AppsScriptClient();
         this.itemRegistry = new ItemRegistry();
         this.creatureRegistry = new CreatureRegistry();
-        this.roomFileManager = new RoomFileManager(localCache);
-        this.playerFileManager = new PlayerFileManager(localCache);
-        this.cloudClient = new AppsScriptClient();
+        this.roomFileManager = new RoomFileManager(cloudClient);
+        this.playerFileManager = new PlayerFileManager(cloudClient);
 
-        // Load registries
+        // Load registries from bundled assets (read-only, not save data)
         itemRegistry.load(context);
         creatureRegistry.load(context);
 
         this.roomGenerator = new RoomGenerator(itemRegistry, creatureRegistry);
 
-        // Try loading mesh from reference file (lazy mode) before falling back to full build
-        WorldMesh.initFromReference(context);
+        // Initialize mesh: try cloud reference, otherwise build in memory from seed
+        WorldMesh.initFromCloud(cloudClient);
     }
 
     public static synchronized GameRepository getInstance(Context context) {
@@ -109,7 +105,7 @@ public class GameRepository {
     // ---- Room operations ----
 
     /**
-     * Load a room using the priority: cloud -> local cache -> generate from WorldMesh.
+     * Load a room using the priority: cloud -> generate from WorldMesh.
      * Door connections always come from the pre-built WorldMesh linked list,
      * ensuring the room layout is consistent regardless of data source.
      */
@@ -118,25 +114,15 @@ public class GameRepository {
         int roomNumber = RoomIdHelper.getRoomNumber(roomId);
         int playerLevel = currentPlayer != null ? currentPlayer.getLevel() : 1;
 
-        // 1. Try fetching from Drive cloud storage first
-        Room cloudRoom = fetchRoomFromCloud(roomId);
+        // 1. Try fetching from Drive cloud storage
+        Room cloudRoom = roomFileManager.loadRoom(roomId);
         if (cloudRoom != null) {
-            // Cloud data exists — apply mesh doors to ensure layout consistency
             applyMeshDoors(cloudRoom, region, roomNumber);
-            roomFileManager.saveRoom(cloudRoom);
             currentRoom = cloudRoom;
             return currentRoom;
         }
 
-        // 2. Try loading from local cache
-        if (roomFileManager.roomExists(roomId)) {
-            currentRoom = roomFileManager.loadRoom(roomId);
-            // Re-apply mesh doors in case the local data has stale connections
-            applyMeshDoors(currentRoom, region, roomNumber);
-            return currentRoom;
-        }
-
-        // 3. No cloud or local data — generate room content based on WorldMesh position
+        // 2. No cloud data — generate room content based on WorldMesh position
         if (region == 0) {
             currentRoom = roomGenerator.generateHubRoom();
         } else {
@@ -147,30 +133,10 @@ public class GameRepository {
             currentRoom.setFirstVisitedBy(currentPlayer.getAccessCode());
         }
 
-        // Save generated room
+        // Save generated room to cloud
         roomFileManager.saveRoom(currentRoom);
 
         return currentRoom;
-    }
-
-    /**
-     * Attempt a synchronous cloud fetch for room data.
-     * Returns null if cloud is not configured, the fetch fails, or no data exists.
-     * Uses a short timeout to avoid blocking gameplay for too long.
-     */
-    private Room fetchRoomFromCloud(String roomId) {
-        if (!cloudClient.isConfigured()) return null;
-
-        try {
-            SyncResult result = cloudClient.getRoom(roomId);
-            if (result.isSuccess() && result.getData() != null) {
-                Room room = JsonHelper.fromJson(result.getData(), Room.class);
-                return room;
-            }
-        } catch (Exception e) {
-            // Cloud fetch failed — fall through to local/generate
-        }
-        return null;
     }
 
     /**
@@ -209,10 +175,8 @@ public class GameRepository {
         if (currentPlayer == null) return null;
         String previousRoom = currentPlayer.popRoomFromHistory();
         if (previousRoom == null) {
-            // Fallback: go to hub if history is empty
             previousRoom = Constants.HUB_ROOM_ID;
         }
-        // Use internal navigate with isBackNavigation=true so we don't push onto history
         return navigateToRoomInternal(previousRoom, true);
     }
 
@@ -226,12 +190,10 @@ public class GameRepository {
         if (currentPlayer != null) {
             String oldRoomId = currentPlayer.getCurrentRoomId();
 
-            // Only push to history when moving forward (not going back)
             if (!isBackNavigation && oldRoomId != null && !oldRoomId.equals(roomId)) {
                 currentPlayer.pushRoomToHistory(oldRoomId);
             }
 
-            // Update previousRoomId for legacy compatibility
             if (oldRoomId != null && !oldRoomId.equals(roomId)) {
                 currentPlayer.setPreviousRoomId(oldRoomId);
             }
@@ -251,15 +213,13 @@ public class GameRepository {
             currentPlayer.setRoomsVisitedSinceHub(
                     currentPlayer.getRoomsVisitedSinceHub() + 1);
 
-            // Stamina: consume on movement, regen at hub/waypoint
             if (RoomIdHelper.isHub(roomId)) {
                 currentPlayer.setRoomsVisitedSinceHub(0);
-                currentPlayer.getRoomHistory().clear(); // Clear history at hub
-                currentPlayer.setStamina(currentPlayer.getMaxStamina()); // Full restore at hub
+                currentPlayer.getRoomHistory().clear();
+                currentPlayer.setStamina(currentPlayer.getMaxStamina());
             } else if (room != null && room.isWaypoint()) {
-                currentPlayer.setStamina(currentPlayer.getMaxStamina()); // Full restore at waypoint
+                currentPlayer.setStamina(currentPlayer.getMaxStamina());
             } else {
-                // Consume stamina for movement, regen a little
                 int newStamina = currentPlayer.getStamina() - Constants.STAMINA_COST_MOVE
                         + Constants.STAMINA_REGEN_PER_ROOM;
                 currentPlayer.setStamina(Math.max(0,
@@ -278,5 +238,5 @@ public class GameRepository {
     public CreatureRegistry getCreatureRegistry() { return creatureRegistry; }
     public RoomFileManager getRoomFileManager() { return roomFileManager; }
     public PlayerFileManager getPlayerFileManager() { return playerFileManager; }
-    public LocalCache getLocalCache() { return localCache; }
+    public AppsScriptClient getCloudClient() { return cloudClient; }
 }

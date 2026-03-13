@@ -5,12 +5,10 @@ import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 import com.larleeloo.jormungandr.util.SeededRandom;
 
-import android.content.Context;
 import android.util.Log;
 
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
 import com.larleeloo.jormungandr.cloud.SyncResult;
-import com.larleeloo.jormungandr.data.LocalCache;
 
 import org.json.JSONObject;
 
@@ -42,7 +40,6 @@ import java.util.Map;
 public class WorldMesh {
 
     private static final String TAG = "WorldMesh";
-    private static final String MESH_LOCAL_PATH = "mesh/world_mesh_reference.json";
 
     private static WorldMesh instance;
 
@@ -79,61 +76,46 @@ public class WorldMesh {
     }
 
     /**
-     * Initialize from a local/cloud reference file. Call this early (e.g. in
-     * GameRepository init) with a Context so we can read from LocalCache.
+     * Initialize from a cloud reference file. Call this early (e.g. in
+     * GameRepository init) with an AppsScriptClient so we can fetch from Drive.
      * Returns true if reference was loaded successfully (lazy mode active).
+     * Falls back to full in-memory build if cloud is unavailable.
      */
-    public static synchronized boolean initFromReference(Context context) {
+    public static synchronized boolean initFromCloud(AppsScriptClient client) {
         if (instance != null) return instance.lazyMode;
 
         instance = new WorldMesh();
-        if (instance.loadReference(context)) {
-            Log.i(TAG, "Loaded mesh reference (lazy mode). Rooms: " + instance.refTotalRooms);
+        if (instance.loadReferenceFromCloud(client)) {
+            Log.i(TAG, "Loaded mesh reference from cloud (lazy mode). Rooms: " + instance.refTotalRooms);
             return true;
         }
 
-        // No reference — fall back to full build
-        Log.i(TAG, "No mesh reference found. Building full mesh in memory.");
+        // No cloud reference — fall back to full build
+        Log.i(TAG, "No cloud mesh reference found. Building full mesh in memory.");
         instance.buildMesh();
         return false;
     }
 
     /**
-     * Load reference JSON from local cache, or try Drive if not cached locally.
+     * Load reference JSON directly from Drive cloud storage. No local caching.
      */
-    private boolean loadReference(Context context) {
-        LocalCache cache = new LocalCache(context);
-        String json = cache.loadGeneric(MESH_LOCAL_PATH);
-
-        // Try Drive if not local
-        if (json == null || json.isEmpty()) {
-            AppsScriptClient client = new AppsScriptClient();
-            if (client.isConfigured()) {
-                try {
-                    SyncResult result = client.getMeshReference();
-                    if (result.isSuccess() && result.getData() != null) {
-                        json = result.getData();
-                        // Cache locally for future starts
-                        cache.saveGeneric(MESH_LOCAL_PATH, json);
-                        Log.i(TAG, "Downloaded mesh reference from Drive and cached locally");
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to fetch mesh reference from Drive", e);
-                }
-            }
-        }
-
-        if (json == null || json.isEmpty()) return false;
+    private boolean loadReferenceFromCloud(AppsScriptClient client) {
+        if (client == null || !client.isConfigured()) return false;
 
         try {
-            referenceJson = new JSONObject(json);
-            refTotalRooms = referenceJson.optInt("totalRooms", 0);
-            lazyMode = true;
-            return true;
+            SyncResult result = client.getMeshReference();
+            if (result.isSuccess() && result.getData() != null) {
+                String json = result.getData();
+                referenceJson = new JSONObject(json);
+                refTotalRooms = referenceJson.optInt("totalRooms", 0);
+                lazyMode = true;
+                Log.i(TAG, "Loaded mesh reference from cloud");
+                return true;
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to parse mesh reference JSON", e);
-            return false;
+            Log.w(TAG, "Failed to fetch mesh reference from cloud", e);
         }
+        return false;
     }
 
     /**
