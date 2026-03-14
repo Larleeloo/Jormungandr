@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
+import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.engine.RoomGenerator;
 import com.larleeloo.jormungandr.engine.WorldMesh;
 import com.larleeloo.jormungandr.model.Direction;
@@ -34,6 +35,7 @@ public class GameRepository {
     private final RoomFileManager roomFileManager;
     private final PlayerFileManager playerFileManager;
     private final AppsScriptClient cloudClient;
+    private final CloudSyncManager cloudSyncManager;
     private final RoomGenerator roomGenerator;
 
     private Player currentPlayer;
@@ -41,6 +43,7 @@ public class GameRepository {
 
     private GameRepository(Context context) {
         this.cloudClient = new AppsScriptClient();
+        this.cloudSyncManager = new CloudSyncManager();
         this.itemRegistry = new ItemRegistry();
         this.creatureRegistry = new CreatureRegistry();
         this.roomFileManager = new RoomFileManager(cloudClient);
@@ -83,7 +86,8 @@ public class GameRepository {
 
     public void savePlayer() {
         if (currentPlayer != null) {
-            playerFileManager.savePlayer(currentPlayer);
+            // Async cloud upload to avoid NetworkOnMainThreadException
+            cloudSyncManager.syncPlayerToCloud(currentPlayer, null);
         }
     }
 
@@ -155,7 +159,10 @@ public class GameRepository {
 
     public void saveCurrentRoom() {
         if (currentRoom != null) {
-            roomFileManager.saveRoom(currentRoom);
+            // Async cloud upload — the synchronous roomFileManager.saveRoom()
+            // throws NetworkOnMainThreadException when called from UI thread,
+            // so rely on the async path for actual persistence.
+            cloudSyncManager.syncRoomToCloud(currentRoom, null);
         }
     }
 
@@ -210,4 +217,5 @@ public class GameRepository {
     public RoomFileManager getRoomFileManager() { return roomFileManager; }
     public PlayerFileManager getPlayerFileManager() { return playerFileManager; }
     public AppsScriptClient getCloudClient() { return cloudClient; }
+    public CloudSyncManager getCloudSyncManager() { return cloudSyncManager; }
 }
