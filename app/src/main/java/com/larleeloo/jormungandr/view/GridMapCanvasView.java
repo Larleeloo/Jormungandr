@@ -248,9 +248,22 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
 
             int size = Constants.GRID_SIZE;
 
-            // Draw rooms and their connections
-            for (int row = 0; row < size; row++) {
-                for (int col = 0; col < size; col++) {
+            // Viewport culling: compute visible row/col range from canvas bounds
+            // The canvas transform is: screenX = w/2 + offsetX + worldX * scale
+            // So worldX = (screenX - w/2 - offsetX) / scale, and worldX = col * CELL_SIZE
+            float worldLeft = (0 - w / 2f - offsetX) / scale;
+            float worldRight = (w - w / 2f - offsetX) / scale;
+            float worldTop = (0 - h / 2f - offsetY) / scale;
+            float worldBottom = (h - h / 2f - offsetY) / scale;
+
+            int minCol = Math.max(0, (int) Math.floor(worldLeft / CELL_SIZE) - 1);
+            int maxCol = Math.min(size - 1, (int) Math.ceil(worldRight / CELL_SIZE) + 1);
+            int minRow = Math.max(0, (int) Math.floor(worldTop / CELL_SIZE) - 1);
+            int maxRow = Math.min(size - 1, (int) Math.ceil(worldBottom / CELL_SIZE) + 1);
+
+            // Draw only visible rooms and their connections
+            for (int row = minRow; row <= maxRow; row++) {
+                for (int col = minCol; col <= maxCol; col++) {
                     String roomId = RoomIdHelper.makeRoomId(displayRegion, row, col);
                     boolean isDiscovered = discoveredSet.contains(roomId);
 
