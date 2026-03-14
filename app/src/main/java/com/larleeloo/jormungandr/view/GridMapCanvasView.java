@@ -29,8 +29,14 @@ import java.util.Set;
  * Discovered rooms are drawn as colored cells; connections between rooms
  * are drawn as passages. Portal doors to other regions are shown as
  * small colored dots representing the target region.
+ *
+ * Admin mode reveals all rooms and allows tap-to-inspect/travel.
  */
 public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Callback {
+
+    public interface OnRoomTapListener {
+        void onRoomTapped(String roomId, int region, int row, int col);
+    }
 
     private Player player;
     private String currentRoomId;
@@ -38,6 +44,8 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
     private float offsetX = 0, offsetY = 0;
     private float scale = 1.0f;
     private boolean isReady = false;
+    private boolean adminMode = false;
+    private OnRoomTapListener roomTapListener;
 
     private final Set<String> discoveredSet = new HashSet<>();
 
@@ -58,6 +66,9 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
 
     private ScaleGestureDetector scaleDetector;
     private GestureDetector gestureDetector;
+
+    // Track canvas dimensions for hit-testing
+    private int canvasWidth, canvasHeight;
 
     public GridMapCanvasView(Context context) { super(context); init(context); }
     public GridMapCanvasView(Context context, AttributeSet attrs) { super(context, attrs); init(context); }
@@ -106,6 +117,14 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
                 render();
                 return true;
             }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                if (roomTapListener != null && displayRegion > 0) {
+                    handleRoomTap(e.getX(), e.getY());
+                }
+                return true;
+            }
         });
     }
 
@@ -125,6 +144,15 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
 
     public int getDisplayRegion() {
         return displayRegion;
+    }
+
+    public void setAdminMode(boolean adminMode) {
+        this.adminMode = adminMode;
+        render();
+    }
+
+    public void setOnRoomTapListener(OnRoomTapListener listener) {
+        this.roomTapListener = listener;
     }
 
     private void rebuildDiscoveredSet() {
@@ -151,6 +179,28 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
         }
     }
 
+    /**
+     * Convert screen coordinates to grid row/col and fire the tap listener.
+     */
+    private void handleRoomTap(float screenX, float screenY) {
+        // Reverse the canvas transform: translate then scale
+        float worldX = (screenX - canvasWidth / 2f - offsetX) / scale;
+        float worldY = (screenY - canvasHeight / 2f - offsetY) / scale;
+
+        // Convert world coords to grid cell
+        int col = Math.round(worldX / CELL_SIZE);
+        int row = Math.round(worldY / CELL_SIZE);
+
+        if (row < 0 || row >= Constants.GRID_SIZE || col < 0 || col >= Constants.GRID_SIZE) return;
+
+        String roomId = RoomIdHelper.makeRoomId(displayRegion, row, col);
+
+        // In admin mode, any room is tappable. In normal mode, only discovered rooms.
+        if (adminMode || discoveredSet.contains(roomId)) {
+            roomTapListener.onRoomTapped(roomId, displayRegion, row, col);
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
@@ -159,7 +209,11 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
     }
 
     @Override public void surfaceCreated(SurfaceHolder holder) { isReady = true; render(); }
-    @Override public void surfaceChanged(SurfaceHolder h, int f, int w, int ht) { render(); }
+    @Override public void surfaceChanged(SurfaceHolder h, int f, int w, int ht) {
+        canvasWidth = w;
+        canvasHeight = ht;
+        render();
+    }
     @Override public void surfaceDestroyed(SurfaceHolder holder) { isReady = false; }
 
     public void render() {
@@ -172,6 +226,8 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
 
             int w = canvas.getWidth();
             int h = canvas.getHeight();
+            canvasWidth = w;
+            canvasHeight = h;
 
             // Dark background
             canvas.drawColor(0xFF0D0520);
@@ -192,11 +248,14 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
 
             int size = Constants.GRID_SIZE;
 
-            // Draw discovered rooms and their connections
+            // Draw rooms and their connections
             for (int row = 0; row < size; row++) {
                 for (int col = 0; col < size; col++) {
                     String roomId = RoomIdHelper.makeRoomId(displayRegion, row, col);
-                    if (!discoveredSet.contains(roomId)) continue;
+                    boolean isDiscovered = discoveredSet.contains(roomId);
+
+                    // In normal mode, skip undiscovered rooms
+                    if (!adminMode && !isDiscovered) continue;
 
                     float cx = col * CELL_SIZE;
                     float cy = row * CELL_SIZE;
@@ -204,8 +263,13 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
 
                     // Draw cell
                     cellPaint.setColor(regionColor);
-                    cellPaint.setAlpha(180);
                     cellPaint.setStyle(Paint.Style.FILL);
+                    if (adminMode && !isDiscovered) {
+                        // Undiscovered rooms in admin mode: dimmed
+                        cellPaint.setAlpha(60);
+                    } else {
+                        cellPaint.setAlpha(180);
+                    }
                     RectF cellRect = new RectF(cx - half + 1, cy - half + 1,
                             cx + half - 1, cy + half - 1);
                     canvas.drawRect(cellRect, cellPaint);
@@ -238,26 +302,33 @@ public class GridMapCanvasView extends SurfaceView implements SurfaceHolder.Call
                             float px = cx + dir.getDCol() * (half - 1);
                             float py = cy + dir.getDRow() * (half - 1);
                             canvas.drawCircle(px, py, PORTAL_RADIUS, portalPaint);
-                        } else if (discoveredSet.contains(neighborId)) {
-                            // Same-region neighbor that's also discovered — draw passage
-                            passagePaint.setColor(regionColor);
-                            passagePaint.setAlpha(120);
-                            passagePaint.setStyle(Paint.Style.FILL);
+                        } else {
+                            boolean neighborDiscovered = discoveredSet.contains(neighborId);
+                            // In admin mode show all passages; normal mode only discovered neighbors
+                            if (adminMode || neighborDiscovered) {
+                                passagePaint.setColor(regionColor);
+                                passagePaint.setStyle(Paint.Style.FILL);
+                                if (adminMode && (!isDiscovered || !neighborDiscovered)) {
+                                    passagePaint.setAlpha(40);
+                                } else {
+                                    passagePaint.setAlpha(120);
+                                }
 
-                            float nx = RoomIdHelper.getCol(neighborId) * CELL_SIZE;
-                            float ny = RoomIdHelper.getRow(neighborId) * CELL_SIZE;
+                                float nx = RoomIdHelper.getCol(neighborId) * CELL_SIZE;
+                                float ny = RoomIdHelper.getRow(neighborId) * CELL_SIZE;
 
-                            // Draw a thin rect connecting the two cells
-                            if (dir == Direction.EAST || dir == Direction.WEST) {
-                                float minX = Math.min(cx, nx);
-                                float maxX = Math.max(cx, nx);
-                                canvas.drawRect(minX + half - 1, cy - PASSAGE_WIDTH / 2f,
-                                        maxX - half + 1, cy + PASSAGE_WIDTH / 2f, passagePaint);
-                            } else {
-                                float minY = Math.min(cy, ny);
-                                float maxY = Math.max(cy, ny);
-                                canvas.drawRect(cx - PASSAGE_WIDTH / 2f, minY + half - 1,
-                                        cx + PASSAGE_WIDTH / 2f, maxY - half + 1, passagePaint);
+                                // Draw a thin rect connecting the two cells
+                                if (dir == Direction.EAST || dir == Direction.WEST) {
+                                    float minX = Math.min(cx, nx);
+                                    float maxX = Math.max(cx, nx);
+                                    canvas.drawRect(minX + half - 1, cy - PASSAGE_WIDTH / 2f,
+                                            maxX - half + 1, cy + PASSAGE_WIDTH / 2f, passagePaint);
+                                } else {
+                                    float minY = Math.min(cy, ny);
+                                    float maxY = Math.max(cy, ny);
+                                    canvas.drawRect(cx - PASSAGE_WIDTH / 2f, minY + half - 1,
+                                            cx + PASSAGE_WIDTH / 2f, maxY - half + 1, passagePaint);
+                                }
                             }
                         }
                     }
