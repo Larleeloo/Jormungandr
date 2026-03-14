@@ -162,27 +162,6 @@ public class AppsScriptClient {
         }
     }
 
-    public SyncResult saveMeshReference(String meshJson) {
-        try {
-            JSONObject body = new JSONObject();
-            body.put("action", "saveMeshReference");
-            body.put("data", meshJson);
-            return execute(body);
-        } catch (Exception e) {
-            return new SyncResult(false, "Error: " + e.getMessage(), null);
-        }
-    }
-
-    public SyncResult getMeshReference() {
-        try {
-            JSONObject body = new JSONObject();
-            body.put("action", "getMeshReference");
-            return execute(body);
-        } catch (Exception e) {
-            return new SyncResult(false, "Error: " + e.getMessage(), null);
-        }
-    }
-
     public SyncResult adminResetAllPlayers(String accessCode) {
         try {
             JSONObject body = new JSONObject();

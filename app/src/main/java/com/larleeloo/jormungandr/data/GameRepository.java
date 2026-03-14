@@ -51,9 +51,6 @@ public class GameRepository {
         creatureRegistry.load(context);
 
         this.roomGenerator = new RoomGenerator(itemRegistry, creatureRegistry);
-
-        // Initialize mesh: try cloud reference, otherwise build in memory from seed
-        WorldMesh.initFromCloud(cloudClient);
     }
 
     public static synchronized GameRepository getInstance(Context context) {
