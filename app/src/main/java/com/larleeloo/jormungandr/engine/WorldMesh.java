@@ -5,19 +5,11 @@ import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 import com.larleeloo.jormungandr.util.SeededRandom;
 
-import android.util.Log;
-
-import com.larleeloo.jormungandr.cloud.AppsScriptClient;
-import com.larleeloo.jormungandr.cloud.SyncResult;
-
-import org.json.JSONObject;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -30,30 +22,17 @@ import java.util.Map;
  * to create loops and alternate paths. Dead-end rooms may get portal doors
  * that connect to rooms in other regions.
  *
- * The hub (region 0, room 0) connects to the (0,0) entry room of regions 1, 2, and 8.
+ * The hub (region 0, room 0) starts with a single NORTH door to region 1 entrance.
  *
  * Grid coordinates: room number = row * 100 + col.
- * Directions map to cardinal movement:
- *   FORWARD = North (row−1), BACK = South (row+1),
- *   LEFT = West (col−1), RIGHT = East (col+1).
+ * Directions: NORTH (row-1), SOUTH (row+1), WEST (col-1), EAST (col+1).
  */
 public class WorldMesh {
 
-    private static final String TAG = "WorldMesh";
-
     private static WorldMesh instance;
 
-    /** All room nodes keyed by room ID. Used in full-build mode. */
+    /** All room nodes keyed by room ID. */
     private final Map<String, RoomNode> nodes = new HashMap<>();
-
-    /** Parsed reference JSON — loaded lazily from cloud. */
-    private JSONObject referenceJson;
-
-    /** True if operating in lazy-reference mode. */
-    private boolean lazyMode;
-
-    /** Total room count from the reference file. */
-    private int refTotalRooms;
 
     private WorldMesh() {}
 
@@ -65,54 +44,16 @@ public class WorldMesh {
         return instance;
     }
 
-    /**
-     * Initialize from cloud reference. Falls back to full in-memory build.
-     */
-    public static synchronized boolean initFromCloud(AppsScriptClient client) {
-        if (instance != null) return instance.lazyMode;
-
-        instance = new WorldMesh();
-        if (instance.loadReferenceFromCloud(client)) {
-            Log.i(TAG, "Loaded mesh reference from cloud (lazy mode). Rooms: " + instance.refTotalRooms);
-            return true;
-        }
-
-        Log.i(TAG, "No cloud mesh reference found. Building full grid maze in memory.");
-        instance.buildMesh();
-        return false;
-    }
-
-    private boolean loadReferenceFromCloud(AppsScriptClient client) {
-        if (client == null || !client.isConfigured()) return false;
-        try {
-            SyncResult result = client.getMeshReference();
-            if (result.isSuccess() && result.getData() != null) {
-                String json = result.getData();
-                referenceJson = new JSONObject(json);
-                refTotalRooms = referenceJson.optInt("totalRooms", 0);
-                lazyMode = true;
-                return true;
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to fetch mesh reference from cloud", e);
-        }
-        return false;
-    }
-
     // ---- Public accessors ----
 
     public RoomNode getNode(String roomId) {
-        if (!lazyMode) return nodes.get(roomId);
-        return buildNodeFromReference(roomId);
+        return nodes.get(roomId);
     }
 
     public Map<Direction, String> getNeighbors(String roomId) {
-        if (!lazyMode) {
-            RoomNode node = nodes.get(roomId);
-            if (node == null) return new HashMap<>();
-            return node.getNeighbors();
-        }
-        return getNeighborsFromReference(roomId);
+        RoomNode node = nodes.get(roomId);
+        if (node == null) return new HashMap<>();
+        return node.getNeighbors();
     }
 
     public Map<Direction, String> getNeighbors(int region, int roomNumber) {
@@ -120,23 +61,14 @@ public class WorldMesh {
     }
 
     public boolean hasRoom(String roomId) {
-        if (!lazyMode) return nodes.containsKey(roomId);
-        return hasRoomInReference(roomId);
+        return nodes.containsKey(roomId);
     }
 
     public int getTotalRoomCount() {
-        if (lazyMode) return refTotalRooms;
         return nodes.size();
     }
 
     public int getRegionRoomCount(int region) {
-        if (lazyMode) {
-            try {
-                JSONObject regions = referenceJson.getJSONObject("regions");
-                JSONObject regionObj = regions.optJSONObject(String.valueOf(region));
-                return regionObj != null ? regionObj.length() : 0;
-            } catch (Exception e) { return 0; }
-        }
         int count = 0;
         for (RoomNode node : nodes.values()) {
             if (node.getRegion() == region) count++;
@@ -146,53 +78,6 @@ public class WorldMesh {
 
     public Map<String, RoomNode> getAllNodes() {
         return Collections.unmodifiableMap(nodes);
-    }
-
-    public boolean isLazyMode() { return lazyMode; }
-
-    // ---- Lazy-reference lookups ----
-
-    private Map<Direction, String> getNeighborsFromReference(String roomId) {
-        try {
-            int region = RoomIdHelper.getRegion(roomId);
-            JSONObject regions = referenceJson.getJSONObject("regions");
-            JSONObject regionObj = regions.optJSONObject(String.valueOf(region));
-            if (regionObj == null) return new HashMap<>();
-            JSONObject roomObj = regionObj.optJSONObject(roomId);
-            if (roomObj == null) return new HashMap<>();
-
-            Map<Direction, String> neighbors = new HashMap<>();
-            Iterator<String> keys = roomObj.keys();
-            while (keys.hasNext()) {
-                String dirName = keys.next();
-                try {
-                    Direction dir = Direction.valueOf(dirName);
-                    neighbors.put(dir, roomObj.getString(dirName));
-                } catch (IllegalArgumentException ignored) {}
-            }
-            return neighbors;
-        } catch (Exception e) { return new HashMap<>(); }
-    }
-
-    private boolean hasRoomInReference(String roomId) {
-        try {
-            int region = RoomIdHelper.getRegion(roomId);
-            JSONObject regions = referenceJson.getJSONObject("regions");
-            JSONObject regionObj = regions.optJSONObject(String.valueOf(region));
-            return regionObj != null && regionObj.has(roomId);
-        } catch (Exception e) { return false; }
-    }
-
-    private RoomNode buildNodeFromReference(String roomId) {
-        Map<Direction, String> neighbors = getNeighborsFromReference(roomId);
-        if (neighbors.isEmpty()) return null;
-        int region = RoomIdHelper.getRegion(roomId);
-        int roomNumber = RoomIdHelper.getRoomNumber(roomId);
-        RoomNode node = new RoomNode(region, roomNumber);
-        for (Map.Entry<Direction, String> entry : neighbors.entrySet()) {
-            node.addNeighbor(entry.getKey(), entry.getValue());
-        }
-        return node;
     }
 
     // ---- Mesh construction ----
