@@ -1,7 +1,9 @@
 package com.larleeloo.jormungandr.activity;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -14,9 +16,13 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.larleeloo.jormungandr.BuildConfig;
 import com.larleeloo.jormungandr.R;
+import com.larleeloo.jormungandr.asset.GameAssetManager;
+import com.larleeloo.jormungandr.asset.SoundManager;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
+import com.larleeloo.jormungandr.engine.WorldMesh;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.util.Constants;
 
@@ -52,6 +58,9 @@ public class MainActivity extends AppCompatActivity {
         startGameButton = findViewById(R.id.btn_start_game);
 
         versionText.setText("v" + Constants.GAME_VERSION);
+
+        // Check for app update — reset stale singletons when versionCode changes
+        invalidateCachesIfUpdated();
 
         // Initialize repository
         GameRepository.getInstance(this);
@@ -157,6 +166,29 @@ public class MainActivity extends AppCompatActivity {
             }
             syncManager.shutdown();
         });
+    }
+
+    /**
+     * Compare the current versionCode to the last-run value stored in SharedPreferences.
+     * If the app was updated (or this is a fresh install), reset all static singletons
+     * so they rebuild with the latest code and assets.
+     */
+    private void invalidateCachesIfUpdated() {
+        SharedPreferences prefs = getSharedPreferences("jormungandr_version", MODE_PRIVATE);
+        int lastVersion = prefs.getInt("last_version_code", -1);
+        int currentVersion = BuildConfig.VERSION_CODE;
+
+        if (lastVersion != currentVersion) {
+            Log.i("MainActivity", "App updated from v" + lastVersion + " to v" + currentVersion
+                    + " — resetting cached state");
+
+            WorldMesh.reset();
+            GameRepository.reset();
+            GameAssetManager.reset();
+            SoundManager.reset();
+
+            prefs.edit().putInt("last_version_code", currentVersion).apply();
+        }
     }
 
     private void launchGame() {

@@ -44,6 +44,11 @@ public class WorldMesh {
         return instance;
     }
 
+    /** Clear the cached instance so it rebuilds on next access. */
+    public static synchronized void reset() {
+        instance = null;
+    }
+
     // ---- Public accessors ----
 
     public RoomNode getNode(String roomId) {

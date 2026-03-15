@@ -4,7 +4,7 @@ public final class Constants {
     private Constants() {}
 
     // Game version
-    public static final String GAME_VERSION = "1.0";
+    public static final String GAME_VERSION = "1.1";
 
     // Inventory
     public static final int MIN_INVENTORY_SLOTS = 8;

@@ -37,6 +37,19 @@ public class SoundManager {
         return instance;
     }
 
+    /** Release resources and clear the cached instance. */
+    public static synchronized void reset() {
+        if (instance != null) {
+            instance.stopMusic();
+            if (instance.soundPool != null) {
+                instance.soundPool.release();
+                instance.soundPool = null;
+            }
+            instance.loadedSounds.clear();
+        }
+        instance = null;
+    }
+
     /**
      * Play background music from assets/sounds/music/
      */
