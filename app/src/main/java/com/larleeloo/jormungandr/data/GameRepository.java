@@ -67,6 +67,14 @@ public class GameRepository {
         return instance;
     }
 
+    /** Clear the cached instance so it reinitializes on next access. */
+    public static synchronized void reset() {
+        if (instance != null) {
+            instance.cloudSyncManager.shutdown();
+        }
+        instance = null;
+    }
+
     // ---- Player operations ----
 
     public Player createNewPlayer(String accessCode, String name) {

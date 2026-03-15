@@ -37,6 +37,14 @@ public class GameAssetManager {
         return instance;
     }
 
+    /** Clear the cached instance and evict all cached sprites. */
+    public static synchronized void reset() {
+        if (instance != null) {
+            instance.cache.evictAll();
+        }
+        instance = null;
+    }
+
     /**
      * Load a sprite by its asset path. Returns null if not found (caller should use placeholder).
      */
