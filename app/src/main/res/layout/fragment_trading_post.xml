@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1A0A2E"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Trading Post"
+            android:textColor="#FFD700"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/trade_gold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gold: 0"
+            android:textColor="#FFD700"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Sell section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/btn_select_item"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Select Item to Sell"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#4B0082"
+            android:layout_marginEnd="4dp" />
+
+        <EditText
+            android:id="@+id/input_price"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:hint="Price"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#888888"
+            android:textSize="14sp"
+            android:inputType="number"
+            android:background="@drawable/bottom_bar_button"
+            android:padding="8dp"
+            android:gravity="center"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_list_item"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="List"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#228B22" />
+    </LinearLayout>
+
+    <!-- Listings -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Current Listings"
+        android:textColor="#CCCCCC"
+        android:textSize="14sp"
+        android:layout_marginBottom="4dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/trade_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

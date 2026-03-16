@@ -67,13 +67,13 @@
                 android:layout_marginEnd="8dp" />
 
             <Button
-                android:id="@+id/btn_save"
+                android:id="@+id/btn_trading_post"
                 android:layout_width="0dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="Save"
+                android:text="Trading Post"
                 android:textColor="#FFFFFF"
-                android:backgroundTint="#228B22" />
+                android:backgroundTint="#8B4513" />
         </LinearLayout>
 
         <TextView

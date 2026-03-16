@@ -16,6 +16,7 @@ public class Room {
     private Map<String, String> doors; // Direction name -> target room ID
     private List<RoomObject> objects;
     private List<PlayerNote> playerNotes;
+    private List<TradeListing> tradeListings;
     private String firstVisitedBy;
     private long firstVisitedAt;
 
@@ -23,6 +24,7 @@ public class Room {
         this.doors = new HashMap<>();
         this.objects = new ArrayList<>();
         this.playerNotes = new ArrayList<>();
+        this.tradeListings = new ArrayList<>();
     }
 
     public Room(String roomId, int region, int zone) {
@@ -88,6 +90,11 @@ public class Room {
     public void setObjects(List<RoomObject> objects) { this.objects = objects; }
     public List<PlayerNote> getPlayerNotes() { return playerNotes; }
     public void setPlayerNotes(List<PlayerNote> playerNotes) { this.playerNotes = playerNotes; }
+    public List<TradeListing> getTradeListings() {
+        if (tradeListings == null) tradeListings = new ArrayList<>();
+        return tradeListings;
+    }
+    public void setTradeListings(List<TradeListing> tradeListings) { this.tradeListings = tradeListings; }
     public String getFirstVisitedBy() { return firstVisitedBy; }
     public void setFirstVisitedBy(String firstVisitedBy) { this.firstVisitedBy = firstVisitedBy; }
     public long getFirstVisitedAt() { return firstVisitedAt; }
