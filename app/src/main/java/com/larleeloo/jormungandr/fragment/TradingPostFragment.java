@@ -32,11 +32,13 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
 
     private TextView goldDisplay;
     private Button selectItemBtn;
+    private EditText quantityInput;
     private EditText priceInput;
     private TradeListingAdapter adapter;
 
     private int selectedInventorySlot = -1;
     private String selectedItemId = null;
+    private int selectedSlotQuantity = 0;
 
     @Nullable
     @Override
@@ -58,6 +60,7 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         goldDisplay.setText("Gold: " + player.getGold());
 
         selectItemBtn = view.findViewById(R.id.btn_select_item);
+        quantityInput = view.findViewById(R.id.input_quantity);
         priceInput = view.findViewById(R.id.input_price);
         Button listBtn = view.findViewById(R.id.btn_list_item);
 
@@ -99,13 +102,17 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
                     selectedInventorySlot = slotIndices.get(which);
                     InventorySlot slot = inventory.get(selectedInventorySlot);
                     selectedItemId = slot.getItemId();
+                    selectedSlotQuantity = slot.getQuantity();
                     ItemDef item = repo.getItemRegistry().getItem(selectedItemId);
                     String displayName = item != null ? item.getDisplayName() : selectedItemId;
-                    selectItemBtn.setText(displayName + " x" + slot.getQuantity());
+                    selectItemBtn.setText(displayName + " x" + selectedSlotQuantity);
 
-                    // Suggest sell price
+                    // Default quantity to full stack
+                    quantityInput.setText(String.valueOf(selectedSlotQuantity));
+
+                    // Suggest sell price scaled by quantity
                     if (item != null && item.getSellPrice() > 0) {
-                        priceInput.setText(String.valueOf(item.getSellPrice()));
+                        priceInput.setText(String.valueOf(item.getSellPrice() * selectedSlotQuantity));
                     }
                 })
                 .show();
@@ -117,6 +124,27 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
             return;
         }
 
+        // Parse quantity
+        String qtyText = quantityInput.getText().toString().trim();
+        if (qtyText.isEmpty()) {
+            Toast.makeText(requireContext(), "Enter a quantity", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int listQty;
+        try {
+            listQty = Integer.parseInt(qtyText);
+        } catch (NumberFormatException e) {
+            Toast.makeText(requireContext(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (listQty <= 0) {
+            Toast.makeText(requireContext(), "Quantity must be positive", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Parse price
         String priceText = priceInput.getText().toString().trim();
         if (priceText.isEmpty()) {
             Toast.makeText(requireContext(), "Enter a price", Toast.LENGTH_SHORT).show();
@@ -143,13 +171,23 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
             return;
         }
 
-        // Remove item from player inventory
-        int quantity = slot.getQuantity();
-        slot.setItemId(null);
-        slot.setQuantity(0);
+        if (listQty > slot.getQuantity()) {
+            Toast.makeText(requireContext(), "Only " + slot.getQuantity() + " available",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Deduct listed quantity from inventory slot
+        int remaining = slot.getQuantity() - listQty;
+        if (remaining <= 0) {
+            slot.setItemId(null);
+            slot.setQuantity(0);
+        } else {
+            slot.setQuantity(remaining);
+        }
 
         // Add trade listing to hub room
-        TradeListing listing = new TradeListing(selectedItemId, quantity, price,
+        TradeListing listing = new TradeListing(selectedItemId, listQty, price,
                 player.getName(), player.getAccessCode());
         hubRoom.getTradeListings().add(listing);
 
@@ -162,7 +200,7 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
 
         ItemDef item = repo.getItemRegistry().getItem(selectedItemId);
         String displayName = item != null ? item.getDisplayName() : selectedItemId;
-        Toast.makeText(requireContext(), "Listed " + displayName + " for " + price + "g",
+        Toast.makeText(requireContext(), "Listed " + displayName + " x" + listQty + " for " + price + "g",
                 Toast.LENGTH_SHORT).show();
 
         resetSelection();
@@ -171,7 +209,9 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
     private void resetSelection() {
         selectedInventorySlot = -1;
         selectedItemId = null;
+        selectedSlotQuantity = 0;
         selectItemBtn.setText("Select Item to Sell");
+        quantityInput.setText("");
         priceInput.setText("");
     }
 
