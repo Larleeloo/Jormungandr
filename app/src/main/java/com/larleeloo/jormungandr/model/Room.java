@@ -16,7 +16,7 @@ public class Room {
     private Map<String, String> doors; // Direction name -> target room ID
     private List<RoomObject> objects;
     private List<PlayerNote> playerNotes;
-    private List<TradeListing> tradeListings;
+    private transient List<TradeListing> tradeListings;
     private String firstVisitedBy;
     private long firstVisitedAt;
 

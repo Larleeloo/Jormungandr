@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.adapter.TradeListingAdapter;
+import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.model.InventorySlot;
 import com.larleeloo.jormungandr.model.ItemDef;
@@ -71,6 +72,14 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         adapter = new TradeListingAdapter(listings, repo.getItemRegistry(),
                 player.getAccessCode(), this);
         tradeList.setAdapter(adapter);
+
+        // Fetch latest trade listings from cloud
+        CloudSyncManager syncManager = repo.getCloudSyncManager();
+        syncManager.syncTradesFromCloud(hubRoom.getRoomId(), (success, message) -> {
+            if (isAdded()) {
+                adapter.notifyDataSetChanged();
+            }
+        });
 
         selectItemBtn.setOnClickListener(v -> showItemPicker(player, repo));
         listBtn.setOnClickListener(v -> listSelectedItem(player, hubRoom, repo));
@@ -191,9 +200,9 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
                 player.getName(), player.getAccessCode());
         hubRoom.getTradeListings().add(listing);
 
-        // Persist both player and room
+        // Persist player and trade listings separately
         repo.savePlayer();
-        repo.saveCurrentRoom();
+        saveTrades(hubRoom, repo);
 
         adapter.notifyItemInserted(hubRoom.getTradeListings().size() - 1);
         goldDisplay.setText("Gold: " + player.getGold());
@@ -244,9 +253,9 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         // Remove the listing
         hubRoom.getTradeListings().remove(position);
 
-        // Persist
+        // Persist player and trade listings separately
         repo.savePlayer();
-        repo.saveCurrentRoom();
+        saveTrades(hubRoom, repo);
 
         adapter.notifyItemRemoved(position);
         goldDisplay.setText("Gold: " + player.getGold());
@@ -274,9 +283,9 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         // Remove listing
         hubRoom.getTradeListings().remove(position);
 
-        // Persist
+        // Persist player and trade listings separately
         repo.savePlayer();
-        repo.saveCurrentRoom();
+        saveTrades(hubRoom, repo);
 
         adapter.notifyItemRemoved(position);
 
@@ -284,5 +293,10 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         String displayName = item != null ? item.getDisplayName() : listing.getItemId();
         Toast.makeText(requireContext(), "Cancelled listing for " + displayName,
                 Toast.LENGTH_SHORT).show();
+    }
+
+    private void saveTrades(Room hubRoom, GameRepository repo) {
+        repo.getCloudSyncManager().syncTradesToCloud(
+                hubRoom.getRoomId(), hubRoom.getTradeListings(), null);
     }
 }

@@ -10,6 +10,7 @@ import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.PlayerNote;
 import com.larleeloo.jormungandr.model.Room;
+import com.larleeloo.jormungandr.model.TradeListing;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
 import java.util.ArrayList;
@@ -134,9 +135,47 @@ public class CloudSyncManager {
                             }
                         }
 
-                        // Sync trade listings from cloud
-                        if (cloudRoom.getTradeListings() != null) {
-                            currentRoom.setTradeListings(new ArrayList<>(cloudRoom.getTradeListings()));
+                    }
+                }
+            }
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Upload trade listings for a waypoint room to Drive (async).
+     * Trade listings are stored in a separate file per room to prevent
+     * overwrite conflicts when multiple players save the room.
+     */
+    public void syncTradesToCloud(String roomId, List<TradeListing> listings, SyncCallback callback) {
+        executor.execute(() -> {
+            String json = JsonHelper.toJson(listings);
+            SyncResult result = client.saveTrades(roomId, json);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Download trade listings for a waypoint room from Drive (async)
+     * and update the in-memory room.
+     */
+    public void syncTradesFromCloud(String roomId, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.getTrades(roomId);
+            if (result.isSuccess() && result.getData() != null) {
+                GameRepository repo = GameRepository.getInstance();
+                if (repo != null) {
+                    Room currentRoom = repo.getCurrentRoom();
+                    if (currentRoom != null && currentRoom.getRoomId() != null
+                            && currentRoom.getRoomId().equals(roomId)) {
+                        List<TradeListing> cloudTrades = JsonHelper.listFromJson(
+                                result.getData(), TradeListing.class);
+                        if (cloudTrades != null) {
+                            currentRoom.setTradeListings(new ArrayList<>(cloudTrades));
                         }
                     }
                 }

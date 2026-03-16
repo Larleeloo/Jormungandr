@@ -140,6 +140,29 @@ public class AppsScriptClient {
         }
     }
 
+    public SyncResult getTrades(String roomId) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "getTrades");
+            body.put("roomId", roomId);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult saveTrades(String roomId, String tradesJson) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "saveTrades");
+            body.put("roomId", roomId);
+            body.put("data", tradesJson);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public SyncResult adminResetAllRooms(String accessCode) {
         try {
             JSONObject body = new JSONObject();

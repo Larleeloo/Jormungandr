@@ -53,6 +53,7 @@
 var PLAYER_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
 var ROOM_FOLDER_ID   = "1lVx_0npSW4JVaiSr98VQyOpRjxMZ-pfg";
 var NOTES_FOLDER_ID  = "16iJKA0ch5gUDL6yJ_zVa0c4xMBPrrmLG";
+var TRADES_FOLDER_ID = ""; // Create a Drive folder for trade listings and set ID here
 var GAME_VERSION     = "1.0";
 
 // Valid access codes (JORM-ALPHA-001 through JORM-ALPHA-025)
@@ -90,6 +91,10 @@ function doPost(e) {
         return jsonResponse(handleGetNotes(body));
       case "saveNote":
         return jsonResponse(handleSaveNote(body));
+      case "getTrades":
+        return jsonResponse(handleGetTrades(body));
+      case "saveTrades":
+        return jsonResponse(handleSaveTrades(body));
       case "adminResetAllRooms":
         return jsonResponse(handleAdminResetAllRooms(body));
       case "adminResetAllNotes":
@@ -291,6 +296,48 @@ function handleSaveNote(body) {
   }
 
   return { success: true, message: "Note saved." };
+}
+
+// ========== TRADE LISTING HANDLERS ==========
+
+function handleGetTrades(body) {
+  var roomId = (body.roomId || "").trim();
+  if (!roomId) {
+    return { success: false, message: "No roomId provided." };
+  }
+  var fileName = "trades_" + roomId + ".json";
+  var file = findFileInFolder(TRADES_FOLDER_ID, fileName);
+  if (!file) {
+    return { success: true, message: "No trades found.", data: "[]" };
+  }
+  var data = file.getBlob().getDataAsString();
+  return { success: true, message: "Trades loaded.", data: data };
+}
+
+function handleSaveTrades(body) {
+  var roomId = (body.roomId || "").trim();
+  var data = body.data;
+  if (!roomId || !data) {
+    return { success: false, message: "Missing roomId or data." };
+  }
+
+  try {
+    JSON.parse(data);
+  } catch (err) {
+    return { success: false, message: "Invalid JSON data." };
+  }
+
+  var fileName = "trades_" + roomId + ".json";
+  var folder = DriveApp.getFolderById(TRADES_FOLDER_ID);
+  var existing = findFileInFolder(TRADES_FOLDER_ID, fileName);
+
+  if (existing) {
+    existing.setContent(data);
+  } else {
+    folder.createFile(fileName, data, MimeType.PLAIN_TEXT);
+  }
+
+  return { success: true, message: "Trades saved." };
 }
 
 // ========== ADMIN HANDLERS ==========
