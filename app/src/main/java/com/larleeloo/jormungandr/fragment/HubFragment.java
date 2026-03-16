@@ -8,8 +8,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -28,7 +26,7 @@ import java.util.List;
  * Hub room UI. Shows a dynamic set of portal doors:
  * - Region 1 entrance is always available
  * - Discovered waypoints in other regions appear as portal doors
- * - Shop, storage, and save services
+ * - Shop, storage, and trading post services
  */
 public class HubFragment extends Fragment {
 
@@ -76,12 +74,9 @@ public class HubFragment extends Fragment {
         view.findViewById(R.id.btn_storage).setOnClickListener(v ->
                 activity.showFragment(new TransferFragment(), "transfer"));
 
-        // Save
-        view.findViewById(R.id.btn_save).setOnClickListener(v -> {
-            repo.savePlayer();
-            repo.saveCurrentRoom();
-            Toast.makeText(requireContext(), "Game saved!", Toast.LENGTH_SHORT).show();
-        });
+        // Trading Post
+        view.findViewById(R.id.btn_trading_post).setOnClickListener(v ->
+                activity.showFragment(new TradingPostFragment(), "trading_post"));
 
         // Status
         TextView status = view.findViewById(R.id.hub_status);
