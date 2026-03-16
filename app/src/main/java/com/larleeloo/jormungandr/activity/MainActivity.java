@@ -2,6 +2,7 @@ package com.larleeloo.jormungandr.activity;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -16,7 +17,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.larleeloo.jormungandr.BuildConfig;
 import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.asset.GameAssetManager;
 import com.larleeloo.jormungandr.asset.SoundManager;
@@ -176,7 +176,13 @@ public class MainActivity extends AppCompatActivity {
     private void invalidateCachesIfUpdated() {
         SharedPreferences prefs = getSharedPreferences("jormungandr_version", MODE_PRIVATE);
         int lastVersion = prefs.getInt("last_version_code", -1);
-        int currentVersion = BuildConfig.VERSION_CODE;
+        int currentVersion = 0;
+        try {
+            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            currentVersion = (int) pInfo.getLongVersionCode();
+        } catch (Exception e) {
+            Log.w("MainActivity", "Could not read versionCode", e);
+        }
 
         if (lastVersion != currentVersion) {
             Log.i("MainActivity", "App updated from v" + lastVersion + " to v" + currentVersion
