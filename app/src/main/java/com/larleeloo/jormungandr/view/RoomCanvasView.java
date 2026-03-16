@@ -327,8 +327,8 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
                     }
                     break;
                 case "decoration":
-                    shape = "rectangle";
-                    color = 0xFF888888;
+                    shape = getDecorationShape(obj.getSpriteId());
+                    color = getDecorationColor(obj.getSpriteId());
                     break;
                 default:
                     shape = "rectangle";
@@ -358,6 +358,61 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
 
             objectHitBoxes.add(new ObjectHitBox(obj,
                     new RectF(objX, objY, objX + objW, objY + objH)));
+
+            // Draw label for interactable decorations
+            if ("decoration".equals(obj.getType()) && isInteractableDecoration(obj.getSpriteId())) {
+                String label = getDecorationLabel(obj.getSpriteId());
+                if (label != null) {
+                    PlaceholderRenderer.drawLabel(canvas, label,
+                            objX, objY + objH + 18, objW, 18f);
+                }
+            }
+        }
+    }
+
+    private static boolean isInteractableDecoration(String spriteId) {
+        if (spriteId == null) return false;
+        switch (spriteId) {
+            case "shop_counter":
+            case "storage_chest":
+            case "trade_post":
+            case "crystal":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static String getDecorationShape(String spriteId) {
+        if (spriteId == null) return "rectangle";
+        switch (spriteId) {
+            case "crystal": return "gem";
+            case "shop_counter": return "chest";
+            case "storage_chest": return "chest";
+            case "trade_post": return "rectangle";
+            default: return "rectangle";
+        }
+    }
+
+    private static int getDecorationColor(String spriteId) {
+        if (spriteId == null) return 0xFF888888;
+        switch (spriteId) {
+            case "crystal": return 0xFF00CCFF;
+            case "shop_counter": return 0xFFDAA520;
+            case "storage_chest": return 0xFF8B4513;
+            case "trade_post": return 0xFF9932CC;
+            default: return 0xFF888888;
+        }
+    }
+
+    private static String getDecorationLabel(String spriteId) {
+        if (spriteId == null) return null;
+        switch (spriteId) {
+            case "crystal": return "Crystal";
+            case "shop_counter": return "Shop";
+            case "storage_chest": return "Storage";
+            case "trade_post": return "Trade";
+            default: return null;
         }
     }
 

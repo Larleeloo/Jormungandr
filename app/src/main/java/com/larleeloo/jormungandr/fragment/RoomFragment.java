@@ -23,6 +23,7 @@ import com.larleeloo.jormungandr.model.ItemDef;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.model.RoomObject;
+import com.larleeloo.jormungandr.util.RoomIdHelper;
 import com.larleeloo.jormungandr.view.RoomCanvasView;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
     private RoomCanvasView roomCanvas;
     private TextView roomMessage;
     private Button btnUseTorch;
+    private Button btnPortalDoors;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Nullable
@@ -51,6 +53,14 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
         btnUseTorch = view.findViewById(R.id.btn_use_torch);
         btnUseTorch.setOnClickListener(v -> useTorch());
+
+        btnPortalDoors = view.findViewById(R.id.btn_portal_doors);
+        btnPortalDoors.setOnClickListener(v -> {
+            GameActivity activity = (GameActivity) getActivity();
+            if (activity != null) {
+                activity.showFragment(new HubFragment(), "hub");
+            }
+        });
 
         Button btnLeaveNote = view.findViewById(R.id.btn_leave_note);
         btnLeaveNote.setOnClickListener(v -> {
@@ -80,6 +90,10 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             // Show torch button if player has torches and room has hidden objects
             updateTorchButton(room);
 
+            // Show portal doors button for waypoint and hub rooms
+            boolean isWaypointOrHub = room.isWaypoint() || RoomIdHelper.isHub(room.getRoomId());
+            btnPortalDoors.setVisibility(isWaypointOrHub ? View.VISIBLE : View.GONE);
+
             // Check for living creature - auto-enter combat
             if (room.hasLivingCreature()) {
                 RoomObject creature = room.getFirstLivingCreature();
@@ -88,8 +102,16 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             }
 
             // Waypoint notification
-            if (room.isWaypoint()) {
-                showMessage("You've found a Waypoint! Bank items, trade, or teleport here.");
+            if (room.isWaypoint() && !RoomIdHelper.isHub(room.getRoomId())) {
+                // Auto-discover waypoint when visited
+                Player player = GameRepository.getInstance(requireContext()).getCurrentPlayer();
+                if (player != null && !player.getDiscoveredWaypoints().contains(room.getRoomId())) {
+                    player.getDiscoveredWaypoints().add(room.getRoomId());
+                    GameRepository.getInstance(requireContext()).savePlayer();
+                    showMessage("Waypoint discovered! Tap the crystal, storage, or trade post to interact.");
+                } else {
+                    showMessage("Waypoint - Tap objects to interact, or use Portal Doors to teleport.");
+                }
             }
         }
     }
@@ -126,6 +148,9 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
                 break;
             case "item":
                 handleFloorItemTap(object);
+                break;
+            case "decoration":
+                handleDecorationTap(object);
                 break;
             default:
                 showMessage("You examine the " + object.getSpriteId());
@@ -279,6 +304,51 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         repo.savePlayer();
         repo.saveCurrentRoom();
         roomCanvas.renderRoom();
+    }
+
+    private void handleDecorationTap(RoomObject decoration) {
+        GameActivity activity = (GameActivity) getActivity();
+        if (activity == null) return;
+
+        String spriteId = decoration.getSpriteId();
+        if (spriteId == null) {
+            showMessage("You examine the decoration.");
+            return;
+        }
+
+        switch (spriteId) {
+            case "shop_counter":
+                activity.showFragment(new ShopFragment(), "shop");
+                break;
+            case "storage_chest":
+                activity.showFragment(new TransferFragment(), "transfer");
+                break;
+            case "trade_post":
+                activity.showFragment(new ShopFragment(), "shop");
+                break;
+            case "crystal": {
+                GameRepository repo = GameRepository.getInstance(requireContext());
+                Player player = repo.getCurrentPlayer();
+                Room room = repo.getCurrentRoom();
+                if (player != null && room != null) {
+                    // Save game at the crystal
+                    repo.savePlayer();
+                    repo.saveCurrentRoom();
+                    // Discover waypoint if not already
+                    if (!player.getDiscoveredWaypoints().contains(room.getRoomId())) {
+                        player.getDiscoveredWaypoints().add(room.getRoomId());
+                        repo.savePlayer();
+                        showMessage("Waypoint crystal activated! Game saved. Use Portal Doors to teleport.");
+                    } else {
+                        showMessage("Game saved at the waypoint crystal!");
+                    }
+                }
+                break;
+            }
+            default:
+                showMessage("You examine the " + spriteId.replace("_", " ") + ".");
+                break;
+        }
     }
 
     private void updateTorchButton(Room room) {
