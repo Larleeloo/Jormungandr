@@ -12,6 +12,7 @@ import com.larleeloo.jormungandr.model.PlayerNote;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -131,6 +132,11 @@ public class CloudSyncManager {
                                     currentRoom.getPlayerNotes().add(cloudNote);
                                 }
                             }
+                        }
+
+                        // Sync trade listings from cloud
+                        if (cloudRoom.getTradeListings() != null) {
+                            currentRoom.setTradeListings(new ArrayList<>(cloudRoom.getTradeListings()));
                         }
                     }
                 }
