@@ -86,10 +86,14 @@ public class RoomGenerator {
             hub.addDoor(entry.getKey(), entry.getValue());
         }
 
-        // Decorations for the hub
+        // Hub furnishings (tappable decorations)
+        hub.getObjects().add(RoomObject.createDecoration("hub_crystal", "crystal",
+                0.4f, 0.25f, 0.2f, 0.25f));
         hub.getObjects().add(RoomObject.createDecoration("hub_shop", "shop_counter",
-                0.1f, 0.5f, 0.2f, 0.15f));
+                0.05f, 0.5f, 0.2f, 0.15f));
         hub.getObjects().add(RoomObject.createDecoration("hub_storage", "storage_chest",
+                0.4f, 0.55f, 0.15f, 0.12f));
+        hub.getObjects().add(RoomObject.createDecoration("hub_trade", "trade_post",
                 0.7f, 0.5f, 0.15f, 0.12f));
 
         return hub;

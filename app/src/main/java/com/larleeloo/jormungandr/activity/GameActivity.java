@@ -87,11 +87,10 @@ public class GameActivity extends AppCompatActivity {
         }
 
         updateHud();
-        if (com.larleeloo.jormungandr.util.RoomIdHelper.isHub(startRoom)) {
-            showFragment(new HubFragment(), "hub");
-        } else {
-            showFragment(new RoomFragment(), "room");
-        }
+        // All rooms (including hub) start with RoomFragment canvas view.
+        // Hub/waypoint rooms show a "Portal Doors" button to access the
+        // scrollable HubFragment portal interface.
+        showFragment(new RoomFragment(), "room");
     }
 
     public void showFragment(Fragment fragment, String tag) {
@@ -136,15 +135,9 @@ public class GameActivity extends AppCompatActivity {
         long elapsed = System.currentTimeMillis() - loadStart;
         long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
 
-        // Hub room gets HubFragment; all others get RoomFragment
-        boolean isHub = com.larleeloo.jormungandr.util.RoomIdHelper.isHub(roomId);
-        syncUiHandler.postDelayed(() -> {
-            if (isHub) {
-                showFragment(new HubFragment(), "hub");
-            } else {
-                showFragment(new RoomFragment(), "room");
-            }
-        }, remaining);
+        // All rooms use RoomFragment canvas view (hub/waypoint rooms
+        // show a Portal Doors button to access the scrollable portal interface)
+        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
     }
 
     public void startCombat(String creatureDefId, int level, int hp) {
@@ -188,7 +181,7 @@ public class GameActivity extends AppCompatActivity {
                             showSyncStatus(success, message));
                 }
             }
-            showFragment(new HubFragment(), "hub");
+            showFragment(new RoomFragment(), "room");
         }
     }
 
@@ -261,16 +254,12 @@ public class GameActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (!"room".equals(currentFragmentTag) && !"hub".equals(currentFragmentTag)) {
-            // Return to the current room view
-            GameRepository repo = GameRepository.getInstance(this);
-            Player p = repo.getCurrentPlayer();
-            String rid = p != null ? p.getCurrentRoomId() : Constants.HUB_ROOM_ID;
-            if (com.larleeloo.jormungandr.util.RoomIdHelper.isHub(rid)) {
-                showFragment(new HubFragment(), "hub");
-            } else {
-                showFragment(new RoomFragment(), "room");
-            }
+        if ("hub".equals(currentFragmentTag)) {
+            // Return from HubFragment portal view back to the room canvas view
+            showFragment(new RoomFragment(), "room");
+        } else if (!"room".equals(currentFragmentTag)) {
+            // Return to the current room canvas view from shop/inventory/etc.
+            showFragment(new RoomFragment(), "room");
         } else {
             super.onBackPressed();
         }

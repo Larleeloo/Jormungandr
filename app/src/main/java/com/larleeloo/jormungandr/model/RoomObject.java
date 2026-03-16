@@ -122,6 +122,18 @@ public class RoomObject {
             case "creature": return alive;
             case "trap": return !triggered;
             case "item": return quantity > 0;
+            case "decoration":
+                // Hub/waypoint furnishings are interactable
+                if (spriteId != null) {
+                    switch (spriteId) {
+                        case "shop_counter":
+                        case "storage_chest":
+                        case "trade_post":
+                        case "crystal":
+                            return true;
+                    }
+                }
+                return false;
             default: return false;
         }
     }
