@@ -2,6 +2,7 @@ package com.larleeloo.jormungandr.data;
 
 import android.content.Context;
 import android.util.Log;
+import android.util.LruCache;
 
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
@@ -33,6 +34,8 @@ public class GameRepository {
     private static final String TAG = "GameRepository";
     private static GameRepository instance;
 
+    private static final int ROOM_CACHE_SIZE = 50;
+
     private final ItemRegistry itemRegistry;
     private final CreatureRegistry creatureRegistry;
     private final RoomFileManager roomFileManager;
@@ -40,6 +43,7 @@ public class GameRepository {
     private final AppsScriptClient cloudClient;
     private final CloudSyncManager cloudSyncManager;
     private final RoomGenerator roomGenerator;
+    private final LruCache<String, Room> roomCache = new LruCache<>(ROOM_CACHE_SIZE);
 
     private Player currentPlayer;
     private Room currentRoom;
@@ -131,6 +135,7 @@ public class GameRepository {
         if (cloudRoom != null) {
             applyMeshDoors(cloudRoom, region, roomNumber);
             currentRoom = cloudRoom;
+            roomCache.put(roomId, cloudRoom);
             return currentRoom;
         }
 
@@ -147,8 +152,17 @@ public class GameRepository {
 
         // Save generated room to cloud
         roomFileManager.saveRoom(currentRoom);
+        roomCache.put(roomId, currentRoom);
 
         return currentRoom;
+    }
+
+    /**
+     * Return a cached room if available, or null if the room must be fetched
+     * from the cloud. Does NOT set currentRoom.
+     */
+    public Room getCachedRoom(String roomId) {
+        return roomCache.get(roomId);
     }
 
     /**
@@ -170,6 +184,7 @@ public class GameRepository {
 
     public void saveCurrentRoom() {
         if (currentRoom != null) {
+            roomCache.put(currentRoom.getRoomId(), currentRoom);
             // Async cloud upload — the synchronous roomFileManager.saveRoom()
             // throws NetworkOnMainThreadException when called from UI thread,
             // so rely on the async path for actual persistence.
@@ -237,20 +252,103 @@ public class GameRepository {
             if (callback != null) {
                 new Handler(Looper.getMainLooper()).post(() -> callback.onComplete(room));
             }
+            // Prefetch adjacent rooms so the first navigation is fast
+            prefetchAdjacentRooms(roomId);
         });
     }
 
     /**
-     * Navigate to a room on a background thread (cloud load + player state
-     * update), then deliver the result on the main thread.
+     * Navigate using cache-first strategy. If the room is cached, applies
+     * player state updates immediately and returns the cached room. A
+     * background cloud sync refreshes the cache afterward.
+     * If not cached, falls back to the full async network load.
      */
     public void navigateToRoomAsync(String roomId, RoomCallback callback) {
+        Room cached = roomCache.get(roomId);
+        if (cached != null) {
+            // Use cached room — apply player state on main thread immediately
+            currentRoom = cached;
+            applyNavigationState(roomId, cached);
+            if (callback != null) {
+                callback.onComplete(cached);
+            }
+            // Refresh from cloud in background so cache stays fresh
+            cloudSyncManager.executeInBackground(() -> {
+                Room fresh = loadOrGenerateRoom(roomId);
+                if (fresh != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        currentRoom = fresh;
+                    });
+                }
+            });
+            return;
+        }
+
+        // No cache hit — full network load
         cloudSyncManager.executeInBackground(() -> {
             Room room = navigateToRoom(roomId);
             if (callback != null) {
                 new Handler(Looper.getMainLooper()).post(() -> callback.onComplete(room));
             }
+            // Prefetch adjacent rooms
+            prefetchAdjacentRooms(roomId);
         });
+    }
+
+    /**
+     * Prefetch rooms adjacent to the given room by loading them into the cache
+     * on the background executor. Only fetches rooms not already cached.
+     */
+    private void prefetchAdjacentRooms(String roomId) {
+        WorldMesh mesh = WorldMesh.getInstance();
+        Map<Direction, String> neighbors = mesh.getNeighbors(roomId);
+        for (String neighborId : neighbors.values()) {
+            if (roomCache.get(neighborId) == null) {
+                cloudSyncManager.executeInPrefetchPool(() -> {
+                    try {
+                        loadOrGenerateRoom(neighborId);
+                    } catch (Exception e) {
+                        Log.w(TAG, "Prefetch failed for " + neighborId, e);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Apply player state changes for navigating to a room without triggering
+     * a network load. Used by the cache-hit path of navigateToRoomAsync.
+     */
+    private void applyNavigationState(String roomId, Room room) {
+        if (currentPlayer == null) return;
+
+        String oldRoomId = currentPlayer.getCurrentRoomId();
+        if (oldRoomId != null && !oldRoomId.equals(roomId)) {
+            currentPlayer.setPreviousRoomId(oldRoomId);
+        }
+
+        currentPlayer.setCurrentRoomId(roomId);
+        currentPlayer.setCurrentRegion(RoomIdHelper.getRegion(roomId));
+        currentPlayer.discoverRoom(roomId, RoomIdHelper.getRegion(roomId));
+        currentPlayer.setRoomsVisitedSinceHub(
+                currentPlayer.getRoomsVisitedSinceHub() + 1);
+
+        if (RoomIdHelper.isHub(roomId)) {
+            currentPlayer.setRoomsVisitedSinceHub(0);
+            currentPlayer.setStamina(currentPlayer.getMaxStamina());
+        } else if (room != null && room.isWaypoint()) {
+            currentPlayer.setStamina(currentPlayer.getMaxStamina());
+            if (!currentPlayer.getDiscoveredWaypoints().contains(roomId)) {
+                currentPlayer.getDiscoveredWaypoints().add(roomId);
+            }
+        } else {
+            int newStamina = currentPlayer.getStamina() - Constants.STAMINA_COST_MOVE
+                    + Constants.STAMINA_REGEN_PER_ROOM;
+            currentPlayer.setStamina(Math.max(0,
+                    Math.min(currentPlayer.getMaxStamina(), newStamina)));
+        }
+
+        savePlayer();
     }
 
     // ---- Registries ----

@@ -102,20 +102,26 @@ public class GameActivity extends AppCompatActivity {
     }
 
     public void navigateToRoom(String roomId) {
-        // Show loading screen
-        showFragment(new LoadingFragment(), "loading");
-
         GameRepository repo = GameRepository.getInstance(this);
 
         // Upload the room we're LEAVING to cloud (fire-and-forget async)
         repo.saveCurrentRoom();
 
+        // If the room is cached, skip the loading screen entirely
+        if (repo.getCachedRoom(roomId) != null) {
+            repo.navigateToRoomAsync(roomId, room -> {
+                updateHud();
+                showFragment(new RoomFragment(), "room");
+            });
+            return;
+        }
+
+        // No cache hit — show loading screen while fetching from cloud
+        showFragment(new LoadingFragment(), "loading");
+
         long loadStart = System.currentTimeMillis();
         showSyncStatus(true, "Syncing...");
 
-        // Navigate asynchronously — the cloud fetch now runs on a background
-        // thread, so loadOrGenerateRoom can actually reach Drive and retrieve
-        // saved room state (chests opened, creatures defeated, items dropped).
         repo.navigateToRoomAsync(roomId, room -> {
             updateHud();
             showSyncStatus(true, "Synced");
