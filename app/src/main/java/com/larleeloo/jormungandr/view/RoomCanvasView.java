@@ -411,7 +411,7 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
             case "crystal": return "Crystal";
             case "shop_counter": return "Shop";
             case "storage_chest": return "Storage";
-            case "trade_post": return "Shop";
+            case "trade_post": return "Trade";
             default: return null;
         }
     }
