@@ -132,19 +132,20 @@ public class ProximityManager {
         executor.execute(() -> {
             try {
                 SyncResult result = client.getNearbyPlayers(code, room, Constants.PROXIMITY_RANGE);
-                List<NearbyPlayer> nearby;
+                List<NearbyPlayer> parsed;
                 if (result.isSuccess() && result.getData() != null) {
-                    nearby = JsonHelper.listFromJson(result.getData(), NearbyPlayer.class);
-                    if (nearby == null) nearby = new ArrayList<>();
+                    parsed = JsonHelper.listFromJson(result.getData(), NearbyPlayer.class);
+                    if (parsed == null) parsed = new ArrayList<>();
                 } else {
-                    nearby = new ArrayList<>();
+                    parsed = new ArrayList<>();
                 }
 
-                lastNearby = Collections.unmodifiableList(nearby);
+                final List<NearbyPlayer> nearby = Collections.unmodifiableList(parsed);
+                lastNearby = nearby;
 
                 mainHandler.post(() -> {
                     if (listener != null) {
-                        listener.onNearbyPlayersChanged(lastNearby);
+                        listener.onNearbyPlayersChanged(nearby);
                     }
                     // Schedule next poll with appropriate interval
                     if (running.get()) {
