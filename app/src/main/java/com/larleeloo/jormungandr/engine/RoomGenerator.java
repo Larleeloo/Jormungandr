@@ -184,9 +184,12 @@ public class RoomGenerator {
         // Waypoint crystal decoration
         room.getObjects().add(RoomObject.createDecoration("waypoint_crystal", "crystal",
                 0.4f, 0.3f, 0.2f, 0.25f));
+        // Shop counter
+        room.getObjects().add(RoomObject.createDecoration("waypoint_shop", "shop_counter",
+                0.1f, 0.55f, 0.2f, 0.15f));
         // Storage chest
         room.getObjects().add(RoomObject.createDecoration("waypoint_storage", "storage_chest",
-                0.1f, 0.55f, 0.15f, 0.12f));
+                0.4f, 0.55f, 0.15f, 0.12f));
         // Trading post
         room.getObjects().add(RoomObject.createDecoration("waypoint_trade", "trade_post",
                 0.7f, 0.55f, 0.15f, 0.12f));
