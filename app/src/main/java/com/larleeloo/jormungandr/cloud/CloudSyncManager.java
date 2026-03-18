@@ -13,6 +13,8 @@ import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.model.TradeListing;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
+import com.larleeloo.jormungandr.model.TimestampedAction;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -302,6 +304,31 @@ public class CloudSyncManager {
             if (callback != null) {
                 final String finalMessage = message;
                 mainHandler.post(() -> callback.onSyncComplete(success, finalMessage));
+            }
+        });
+    }
+
+    /**
+     * Record a timestamped action to the cloud (async, fire-and-forget).
+     * Used during co-location to log room interactions.
+     */
+    public void recordAction(String roomId, String accessCode, String actionText, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.recordAction(roomId, accessCode, actionText);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Fetch recent timestamped actions for a room (async).
+     */
+    public void getRecentActions(String roomId, long sinceEpochSeconds, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.getRecentActions(roomId, sinceEpochSeconds);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
             }
         });
     }

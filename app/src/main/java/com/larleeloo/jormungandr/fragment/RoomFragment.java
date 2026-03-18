@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.activity.GameActivity;
 import com.larleeloo.jormungandr.data.GameRepository;
+import com.larleeloo.jormungandr.engine.ProximityManager;
 import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.InventorySlot;
 import com.larleeloo.jormungandr.model.ItemDef;
@@ -207,6 +208,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         }
 
         chest.setOpened(true);
+        recordCoLocationAction("Opened a chest");
         List<InventorySlot> contents = chest.getInventory();
 
         if (contents == null || contents.isEmpty()) {
@@ -252,6 +254,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         GameActivity activity = (GameActivity) getActivity();
         if (activity == null) return;
 
+        recordCoLocationAction("Engaged " + creature.getCreatureDefId().replace("_", " ") + " in combat");
         activity.startCombat(creature.getCreatureDefId(), creature.getLevel(), creature.getHp());
     }
 
@@ -262,6 +265,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         }
 
         trap.setTriggered(true);
+        recordCoLocationAction("Triggered a " + trap.getTrapType() + " trap");
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
 
@@ -292,6 +296,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         boolean added = player.addItemToInventory(floorItem.getItemId(), floorItem.getQuantity());
         if (added) {
             showMessage("Picked up " + name + " x" + floorItem.getQuantity());
+            recordCoLocationAction("Picked up " + name);
             floorItem.setQuantity(0);
         } else {
             showMessage("Inventory full! Can't pick up " + name);
@@ -372,6 +377,7 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         }
 
         player.removeItemFromInventory("torch", 1);
+        recordCoLocationAction("Used a torch");
 
         int revealed = 0;
         for (RoomObject obj : room.getObjects()) {
@@ -402,5 +408,24 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
         handler.removeCallbacksAndMessages(null);
         handler.postDelayed(() -> roomMessage.setVisibility(View.GONE), 4000);
+    }
+
+    /**
+     * If other players are nearby, record this action as a timestamped event
+     * in the cloud so co-located players can see it. Fire-and-forget.
+     */
+    private void recordCoLocationAction(String actionText) {
+        GameActivity activity = (GameActivity) getActivity();
+        if (activity == null) return;
+
+        ProximityManager pm = activity.getProximityManager();
+        if (pm == null || !pm.hasNearbyPlayers()) return;
+
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        Player player = repo.getCurrentPlayer();
+        Room room = repo.getCurrentRoom();
+        if (player == null || room == null) return;
+
+        pm.recordAction(room.getRoomId(), player.getAccessCode(), actionText);
     }
 }

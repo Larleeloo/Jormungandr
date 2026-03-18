@@ -92,4 +92,14 @@ public final class Constants {
 
     // World seed for deterministic generation
     public static final long WORLD_SEED = 0x4A6F726D756E4CL;
+
+    // Proximity detection — live co-location system
+    /** Manhattan distance threshold for "nearby" player detection. */
+    public static final int PROXIMITY_RANGE = 3;
+    /** How often (ms) to poll for nearby players when in a room. */
+    public static final long PROXIMITY_POLL_INTERVAL_MS = 10_000;
+    /** Faster poll rate (ms) when at least one player is co-located. */
+    public static final long PROXIMITY_POLL_ACTIVE_MS = 5_000;
+    /** How often (ms) to refresh room state when co-located. */
+    public static final long COLOCATION_ROOM_REFRESH_MS = 5_000;
 }

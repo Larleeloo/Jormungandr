@@ -163,6 +163,44 @@ public class AppsScriptClient {
         }
     }
 
+    public SyncResult getNearbyPlayers(String accessCode, String roomId, int range) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "getNearbyPlayers");
+            body.put("code", accessCode);
+            body.put("roomId", roomId);
+            body.put("range", range);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult recordAction(String roomId, String accessCode, String actionText) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "recordAction");
+            body.put("roomId", roomId);
+            body.put("code", accessCode);
+            body.put("actionText", actionText);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult getRecentActions(String roomId, long sinceEpochSeconds) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "getRecentActions");
+            body.put("roomId", roomId);
+            body.put("since", sinceEpochSeconds);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public SyncResult adminResetAllRooms(String accessCode) {
         try {
             JSONObject body = new JSONObject();

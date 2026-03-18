@@ -54,6 +54,7 @@ var PLAYER_FOLDER_ID = "12QCd57ODE-IbImzPMSqvmKVvyYR5MQdv";
 var ROOM_FOLDER_ID   = "1lVx_0npSW4JVaiSr98VQyOpRjxMZ-pfg";
 var NOTES_FOLDER_ID  = "16iJKA0ch5gUDL6yJ_zVa0c4xMBPrrmLG";
 var TRADES_FOLDER_ID = ""; // Create a Drive folder for trade listings and set ID here
+var ACTIONS_FOLDER_ID = ""; // Create a Drive folder for timestamped co-location actions
 var GAME_VERSION     = "1.0";
 
 // Valid access codes (JORM-ALPHA-001 through JORM-ALPHA-025)
@@ -91,6 +92,12 @@ function doPost(e) {
         return jsonResponse(handleGetNotes(body));
       case "saveNote":
         return jsonResponse(handleSaveNote(body));
+      case "getNearbyPlayers":
+        return jsonResponse(handleGetNearbyPlayers(body));
+      case "recordAction":
+        return jsonResponse(handleRecordAction(body));
+      case "getRecentActions":
+        return jsonResponse(handleGetRecentActions(body));
       case "getTrades":
         return jsonResponse(handleGetTrades(body));
       case "saveTrades":
@@ -296,6 +303,162 @@ function handleSaveNote(body) {
   }
 
   return { success: true, message: "Note saved." };
+}
+
+// ========== PROXIMITY / CO-LOCATION HANDLERS ==========
+
+/**
+ * Scan all player save files to find players near a given room.
+ * Request: { code, roomId, range }
+ * Returns an array of { accessCode, name, roomId, level, distance }.
+ */
+function handleGetNearbyPlayers(body) {
+  var callerCode = (body.code || "").trim().toUpperCase();
+  var callerRoomId = (body.roomId || "").trim();
+  var range = body.range || 3;
+
+  if (!callerCode || !callerRoomId) {
+    return { success: false, message: "Missing code or roomId." };
+  }
+
+  var callerRegion = parseRegion(callerRoomId);
+  var callerNumber = parseRoomNumber(callerRoomId);
+  var callerRow = Math.floor(callerNumber / 100);
+  var callerCol = callerNumber % 100;
+
+  var folder = DriveApp.getFolderById(PLAYER_FOLDER_ID);
+  var files = folder.getFiles();
+  var nearby = [];
+
+  while (files.hasNext()) {
+    var file = files.next();
+    try {
+      var playerData = JSON.parse(file.getBlob().getDataAsString());
+      var pCode = (playerData.accessCode || "").toUpperCase();
+      // Skip self
+      if (pCode === callerCode) continue;
+
+      var pRoomId = playerData.currentRoomId || "";
+      var pRegion = parseRegion(pRoomId);
+      // Must be in the same region
+      if (pRegion !== callerRegion) continue;
+
+      var pNumber = parseRoomNumber(pRoomId);
+      var pRow = Math.floor(pNumber / 100);
+      var pCol = pNumber % 100;
+      var dist = Math.abs(callerRow - pRow) + Math.abs(callerCol - pCol);
+
+      if (dist <= range) {
+        nearby.push({
+          accessCode: pCode,
+          name: playerData.name || pCode,
+          roomId: pRoomId,
+          level: playerData.level || 1,
+          distance: dist
+        });
+      }
+    } catch (err) {
+      // Skip unparseable player files
+    }
+  }
+
+  return { success: true, message: "Found " + nearby.length + " nearby.", data: JSON.stringify(nearby) };
+}
+
+/**
+ * Record a timestamped action for a room (used during co-location).
+ * Request: { roomId, code, actionText }
+ * Stored in ACTIONS_FOLDER as actions_{roomId}.json — an array of recent entries.
+ */
+function handleRecordAction(body) {
+  var roomId = (body.roomId || "").trim();
+  var code = (body.code || "").trim().toUpperCase();
+  var actionText = body.actionText || "";
+
+  if (!roomId || !code || !actionText) {
+    return { success: false, message: "Missing roomId, code, or actionText." };
+  }
+
+  // Resolve player name
+  var playerName = code;
+  var playerFile = findFileInFolder(PLAYER_FOLDER_ID, "player_" + code + ".json");
+  if (playerFile) {
+    try {
+      var pd = JSON.parse(playerFile.getBlob().getDataAsString());
+      playerName = pd.name || code;
+    } catch (err) {}
+  }
+
+  var fileName = "actions_" + roomId + ".json";
+  var folder = DriveApp.getFolderById(ACTIONS_FOLDER_ID);
+  var existing = findFileInFolder(ACTIONS_FOLDER_ID, fileName);
+
+  var actions = [];
+  if (existing) {
+    try { actions = JSON.parse(existing.getBlob().getDataAsString()); } catch (err) { actions = []; }
+  }
+
+  actions.push({
+    playerName: playerName,
+    accessCode: code,
+    actionText: actionText,
+    timestamp: Math.floor(Date.now() / 1000),
+    roomId: roomId
+  });
+
+  // Keep only the latest 30 actions per room
+  if (actions.length > 30) {
+    actions = actions.slice(actions.length - 30);
+  }
+
+  var jsonData = JSON.stringify(actions);
+  if (existing) {
+    existing.setContent(jsonData);
+  } else {
+    folder.createFile(fileName, jsonData, MimeType.PLAIN_TEXT);
+  }
+
+  return { success: true, message: "Action recorded." };
+}
+
+/**
+ * Get recent timestamped actions for a room.
+ * Request: { roomId, since } — since is an epoch-second cutoff (optional).
+ */
+function handleGetRecentActions(body) {
+  var roomId = (body.roomId || "").trim();
+  if (!roomId) {
+    return { success: false, message: "No roomId provided." };
+  }
+
+  var fileName = "actions_" + roomId + ".json";
+  var file = findFileInFolder(ACTIONS_FOLDER_ID, fileName);
+  if (!file) {
+    return { success: true, message: "No actions.", data: "[]" };
+  }
+
+  var actions = [];
+  try { actions = JSON.parse(file.getBlob().getDataAsString()); } catch (err) {}
+
+  var since = body.since || 0;
+  if (since > 0) {
+    actions = actions.filter(function(a) { return a.timestamp >= since; });
+  }
+
+  return { success: true, message: "Actions loaded.", data: JSON.stringify(actions) };
+}
+
+// Room-ID parsing helpers (server-side)
+function parseRegion(roomId) {
+  var idx = roomId.indexOf("_");
+  if (idx < 0) return 0;
+  return parseInt(roomId.substring(1, idx), 10) || 0;
+}
+
+function parseRoomNumber(roomId) {
+  var idx = roomId.indexOf("_");
+  if (idx < 0) return 0;
+  return parseInt(roomId.substring(idx + 1), 10) || 0;
 }
 
 // ========== TRADE LISTING HANDLERS ==========
