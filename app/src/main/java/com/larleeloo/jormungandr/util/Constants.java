@@ -57,7 +57,7 @@ public final class Constants {
     // Cloud sync - set APPS_SCRIPT_URL after deploying your Apps Script
     // See cloud/apps-script/Code.gs for deployment instructions.
     // Steps: 1) Deploy Code.gs as Web App in Google Apps Script
-    //        2) Create 3 Drive folders (players, rooms, notes)
+    //        2) Create 4 Drive folders (players, rooms, notes, trades)
     //        3) Set folder IDs in Code.gs
     //        4) Paste the deployed Web App URL here
     public static final String APPS_SCRIPT_URL = "";
