@@ -4,7 +4,7 @@ import android.content.ClipData;
 import android.content.ClipDescription;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.drawable.BitmapDrawable;
+import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,9 +30,14 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.Slot
         void onSlotClick(int position, InventorySlot slot);
     }
 
+    public interface OnSlotMoveListener {
+        void onSlotMove(int fromPosition, int toPosition);
+    }
+
     private final List<InventorySlot> inventory;
     private final ItemRegistry itemRegistry;
     private final OnSlotClickListener listener;
+    private OnSlotMoveListener moveListener;
     private int selectedPosition = -1;
 
     public InventoryAdapter(List<InventorySlot> inventory, ItemRegistry itemRegistry,
@@ -40,6 +45,10 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.Slot
         this.inventory = inventory;
         this.itemRegistry = itemRegistry;
         this.listener = listener;
+    }
+
+    public void setOnSlotMoveListener(OnSlotMoveListener moveListener) {
+        this.moveListener = moveListener;
     }
 
     @NonNull
@@ -109,14 +118,62 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.Slot
                     new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN},
                     new ClipData.Item(String.valueOf(pos)));
             View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
-            v.startDragAndDrop(data, shadow, slot, 0);
+            // Pass the position as an Integer so we can identify the source slot
+            v.startDragAndDrop(data, shadow, Integer.valueOf(pos), 0);
             return true;
+        });
+
+        // Each slot is a drop target for inventory-to-inventory moves
+        holder.itemView.setOnDragListener((v, event) -> {
+            switch (event.getAction()) {
+                case DragEvent.ACTION_DRAG_STARTED:
+                    // Accept drags that originated from inventory slots
+                    return event.getLocalState() instanceof Integer;
+                case DragEvent.ACTION_DRAG_ENTERED:
+                    holder.slotContainer.setBackgroundResource(R.drawable.inventory_slot_selected);
+                    return true;
+                case DragEvent.ACTION_DRAG_EXITED:
+                    int currentPos = holder.getAdapterPosition();
+                    holder.slotContainer.setBackgroundResource(
+                            currentPos == selectedPosition ?
+                                    R.drawable.inventory_slot_selected :
+                                    R.drawable.inventory_slot_background);
+                    return true;
+                case DragEvent.ACTION_DROP:
+                    int targetPos = holder.getAdapterPosition();
+                    if (targetPos < 0) return false;
+                    Object localState = event.getLocalState();
+                    if (localState instanceof Integer) {
+                        int fromPos = (Integer) localState;
+                        if (fromPos != targetPos && moveListener != null) {
+                            moveListener.onSlotMove(fromPos, targetPos);
+                        }
+                    }
+                    return true;
+                case DragEvent.ACTION_DRAG_ENDED:
+                    // Reset background after drag completes
+                    int endPos = holder.getAdapterPosition();
+                    if (endPos >= 0) {
+                        holder.slotContainer.setBackgroundResource(
+                                endPos == selectedPosition ?
+                                        R.drawable.inventory_slot_selected :
+                                        R.drawable.inventory_slot_background);
+                    }
+                    return true;
+            }
+            return false;
         });
     }
 
     @Override
     public int getItemCount() {
         return inventory.size();
+    }
+
+    public void clearSelection() {
+        int old = selectedPosition;
+        selectedPosition = -1;
+        if (old >= 0) notifyItemChanged(old);
     }
 
     static class SlotViewHolder extends RecyclerView.ViewHolder {

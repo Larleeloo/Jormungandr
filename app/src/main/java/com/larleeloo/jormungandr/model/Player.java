@@ -165,6 +165,40 @@ public class Player {
         }
     }
 
+    /**
+     * Sanitize inventory by clearing ghost slots: any slot with quantity <= 0
+     * or a null/empty itemId is fully cleared to prevent ghost items.
+     */
+    public void sanitizeInventory() {
+        for (InventorySlot slot : inventory) {
+            if (slot.getQuantity() <= 0 || slot.getItemId() == null || slot.getItemId().isEmpty()) {
+                slot.setItemId(null);
+                slot.setQuantity(0);
+            }
+        }
+    }
+
+    /**
+     * Swap two inventory slots by index. Used for drag-and-drop reordering.
+     */
+    public void swapInventorySlots(int fromIndex, int toIndex) {
+        if (fromIndex < 0 || fromIndex >= inventory.size() ||
+            toIndex < 0 || toIndex >= inventory.size() || fromIndex == toIndex) {
+            return;
+        }
+        InventorySlot from = inventory.get(fromIndex);
+        InventorySlot to = inventory.get(toIndex);
+
+        String tempId = from.getItemId();
+        int tempQty = from.getQuantity();
+
+        from.setItemId(to.getItemId());
+        from.setQuantity(to.getQuantity());
+
+        to.setItemId(tempId);
+        to.setQuantity(tempQty);
+    }
+
     public void ensureInventoryCapacity() {
         int max = getMaxInventorySlots();
         while (inventory.size() < max) {
