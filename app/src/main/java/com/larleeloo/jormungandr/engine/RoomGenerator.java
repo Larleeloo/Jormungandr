@@ -143,10 +143,6 @@ public class RoomGenerator {
             }
         }
 
-        // Trading post (safe center position, away from all doors)
-        room.getObjects().add(RoomObject.createDecoration(
-                "room_trade", "trade_post", 0.75f, 0.3f, 0.15f, 0.12f));
-
         // Decorations
         addDecorations(room, rng);
     }
@@ -165,10 +161,6 @@ public class RoomGenerator {
                     creatureDef.getLootTable());
             room.getObjects().add(creature);
         }
-
-        // Trading post (safe center position, away from all doors)
-        room.getObjects().add(RoomObject.createDecoration(
-                "room_trade", "trade_post", 0.75f, 0.3f, 0.15f, 0.12f));
 
         // Creature dens still have some loot
         if (rng.nextDouble() < 0.5) {
