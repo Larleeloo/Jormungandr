@@ -34,7 +34,6 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
     private TextView roomMessage;
     private Button btnUseTorch;
     private Button btnPortalDoors;
-    private Button btnTradingPost;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Nullable
@@ -68,14 +67,6 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             GameActivity activity = (GameActivity) getActivity();
             if (activity != null) {
                 activity.showFragment(new NoteFragment(), "note");
-            }
-        });
-
-        btnTradingPost = view.findViewById(R.id.btn_trading_post);
-        btnTradingPost.setOnClickListener(v -> {
-            GameActivity activity = (GameActivity) getActivity();
-            if (activity != null) {
-                activity.showFragment(new TradingPostFragment(), "trading_post");
             }
         });
 

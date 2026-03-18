@@ -70,19 +70,4 @@
         android:paddingStart="12dp"
         android:paddingEnd="12dp" />
 
-    <!-- Trading Post button -->
-    <Button
-        android:id="@+id/btn_trading_post"
-        android:layout_width="wrap_content"
-        android:layout_height="36dp"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="12dp"
-        android:text="Trade"
-        android:textSize="11sp"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#9932CC"
-        android:minWidth="0dp"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp" />
-
 </FrameLayout>
