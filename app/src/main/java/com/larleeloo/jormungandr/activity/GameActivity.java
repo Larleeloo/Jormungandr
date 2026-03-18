@@ -16,14 +16,18 @@ import androidx.fragment.app.FragmentTransaction;
 import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
+import com.larleeloo.jormungandr.engine.ProximityManager;
 import com.larleeloo.jormungandr.fragment.CharacterFragment;
 import com.larleeloo.jormungandr.fragment.CombatFragment;
 import com.larleeloo.jormungandr.fragment.InventoryFragment;
 import com.larleeloo.jormungandr.fragment.LoadingFragment;
 import com.larleeloo.jormungandr.fragment.MapFragment;
 import com.larleeloo.jormungandr.fragment.RoomFragment;
+import com.larleeloo.jormungandr.model.NearbyPlayer;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.util.Constants;
+
+import java.util.List;
 
 public class GameActivity extends AppCompatActivity {
 
@@ -31,11 +35,13 @@ public class GameActivity extends AppCompatActivity {
     private static final long LOADING_SCREEN_MIN_MS = 1200;
 
     private TextView hudHp, hudMana, hudStamina, hudLevel, syncIndicator;
+    private TextView proximityIndicator;
     private Button btnInventory, btnCharacter, btnMap, btnRoom;
     private Fragment currentFragment;
     private String currentFragmentTag;
     private final Handler syncUiHandler = new Handler(Looper.getMainLooper());
     private Runnable syncHideRunnable;
+    private ProximityManager proximityManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +74,9 @@ public class GameActivity extends AppCompatActivity {
         // Sync status indicator
         syncIndicator = findViewById(R.id.sync_indicator);
 
+        // Proximity indicator bar (above bottom nav)
+        proximityIndicator = findViewById(R.id.proximity_indicator);
+
         if (Constants.APPS_SCRIPT_URL.isEmpty()) {
             showSyncStatus(false, "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java");
         }
@@ -75,6 +84,10 @@ public class GameActivity extends AppCompatActivity {
         // Load the initial room asynchronously so the cloud fetch runs off
         // the main thread (where network I/O is forbidden on Android).
         GameRepository repo = GameRepository.getInstance(this);
+
+        // Proximity manager — polls cloud for co-located players
+        proximityManager = new ProximityManager(repo.getCloudClient());
+        proximityManager.setListener(this::onNearbyPlayersChanged);
         Player player = repo.getCurrentPlayer();
         String startRoom = Constants.HUB_ROOM_ID;
         if (player != null) {
@@ -83,10 +96,12 @@ public class GameActivity extends AppCompatActivity {
 
         showFragment(new LoadingFragment(), "loading");
         showSyncStatus(true, "Syncing...");
+        final String finalStartRoom = startRoom;
         repo.loadOrGenerateRoomAsync(startRoom, room -> {
             updateHud();
             showSyncStatus(true, "Synced");
             showFragment(new RoomFragment(), "room");
+            startProximityPolling(finalStartRoom);
         });
     }
 
@@ -112,6 +127,7 @@ public class GameActivity extends AppCompatActivity {
             repo.navigateToRoomAsync(roomId, room -> {
                 updateHud();
                 showFragment(new RoomFragment(), "room");
+                proximityManager.updateRoom(roomId);
             });
             return;
         }
@@ -130,7 +146,10 @@ public class GameActivity extends AppCompatActivity {
             long elapsed = System.currentTimeMillis() - loadStart;
             long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
 
-            syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
+            syncUiHandler.postDelayed(() -> {
+                showFragment(new RoomFragment(), "room");
+                proximityManager.updateRoom(roomId);
+            }, remaining);
         });
     }
 
@@ -224,13 +243,80 @@ public class GameActivity extends AppCompatActivity {
         return getResources().getColor(resId, getTheme());
     }
 
+    // ---- Proximity / co-location ----
+
+    private void startProximityPolling(String roomId) {
+        GameRepository repo = GameRepository.getInstance(this);
+        Player player = repo.getCurrentPlayer();
+        if (player != null && proximityManager != null) {
+            proximityManager.start(player.getAccessCode(), roomId);
+        }
+    }
+
+    /** Called on main thread by ProximityManager when the nearby-player list changes. */
+    private void onNearbyPlayersChanged(List<NearbyPlayer> nearbyPlayers) {
+        if (proximityIndicator == null) return;
+
+        if (nearbyPlayers.isEmpty()) {
+            proximityIndicator.setVisibility(android.view.View.GONE);
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        boolean hasSameRoom = false;
+        for (NearbyPlayer np : nearbyPlayers) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(np.getName()).append(" (Lv.").append(np.getLevel()).append(")");
+            if (np.isSameRoom()) {
+                hasSameRoom = true;
+            }
+        }
+
+        if (hasSameRoom) {
+            proximityIndicator.setBackgroundColor(0xCC228B22); // green — same room
+            proximityIndicator.setText("LIVE — In this room: " + sb);
+        } else {
+            proximityIndicator.setBackgroundColor(0xCC4B0082); // purple — nearby
+            proximityIndicator.setText("Nearby: " + sb);
+        }
+        proximityIndicator.setVisibility(android.view.View.VISIBLE);
+    }
+
+    /** Expose the ProximityManager so RoomFragment can record timestamped actions. */
+    public ProximityManager getProximityManager() {
+        return proximityManager;
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
+        // Stop proximity polling while backgrounded
+        if (proximityManager != null) {
+            proximityManager.stop();
+        }
         // Auto-save on pause via repo's CloudSyncManager (async)
         GameRepository repo = GameRepository.getInstance(this);
         repo.savePlayer();
         repo.saveCurrentRoom();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Restart proximity polling when returning to foreground
+        GameRepository repo = GameRepository.getInstance(this);
+        Player player = repo.getCurrentPlayer();
+        if (player != null && proximityManager != null) {
+            proximityManager.start(player.getAccessCode(), player.getCurrentRoomId());
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (proximityManager != null) {
+            proximityManager.shutdown();
+        }
     }
 
     @Override
