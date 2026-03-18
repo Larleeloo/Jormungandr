@@ -104,6 +104,7 @@ public class Player {
     }
 
     public boolean addItemToInventory(String itemId, int quantity) {
+        ensureInventoryCapacity();
         // Try to stack with existing
         for (InventorySlot slot : inventory) {
             if (itemId.equals(slot.getItemId()) && slot.getQuantity() < Constants.MAX_STACK_SIZE) {
