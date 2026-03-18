@@ -88,7 +88,7 @@ public class GameActivity extends AppCompatActivity {
 
         updateHud();
         // All rooms (including hub) start with RoomFragment canvas view.
-        // Hub/waypoint rooms show a "Portal Doors" button to access the
+        // Hub/waypoint rooms let the player tap the crystal to access the
         // scrollable HubFragment portal interface.
         showFragment(new RoomFragment(), "room");
     }
@@ -136,7 +136,7 @@ public class GameActivity extends AppCompatActivity {
         long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
 
         // All rooms use RoomFragment canvas view (hub/waypoint rooms
-        // show a Portal Doors button to access the scrollable portal interface)
+        // let the player tap the crystal to access the scrollable portal interface)
         syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
     }
 
