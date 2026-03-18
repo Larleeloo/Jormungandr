@@ -21,11 +21,13 @@ import com.larleeloo.jormungandr.activity.GameActivity;
 import com.larleeloo.jormungandr.adapter.InventoryAdapter;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.model.EquipmentSlot;
+import com.larleeloo.jormungandr.model.InventoryLinkedList;
 import com.larleeloo.jormungandr.model.InventorySlot;
 import com.larleeloo.jormungandr.model.ItemDef;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.model.RoomObject;
+import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.view.CharacterSilhouetteView;
 
 public class InventoryFragment extends Fragment implements InventoryAdapter.OnSlotClickListener {
@@ -38,6 +40,7 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
     private TextView eqMainHand, eqOffHand, eqHead, eqChest, eqLegs, eqFeet, eqAcc1, eqAcc2;
     private CharacterSilhouetteView characterSilhouette;
     private int selectedSlotIndex = -1;
+    private InventoryLinkedList inventoryLinkedList;
 
     @Nullable
     @Override
@@ -75,7 +78,13 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
         if (player != null) {
+            // Build the linked list from the player's inventory
+            inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
+
             adapter = new InventoryAdapter(player.getInventory(), repo.getItemRegistry(), this);
+            adapter.setOnSlotMoveListener((fromPosition, toPosition) -> {
+                handleInventorySlotMove(fromPosition, toPosition);
+            });
             inventoryGrid.setAdapter(adapter);
             goldDisplay.setText("Gold: " + player.getGold());
             updateEquipmentDisplay(player, repo);
@@ -110,6 +119,29 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         setupEquipDragTarget(eqAcc2, EquipmentSlot.ACCESSORY_2);
     }
 
+    /**
+     * Handle drag-and-drop move between two inventory slots using the linked list.
+     * Supports: move to empty slot, stack merging, and item swapping.
+     */
+    private void handleInventorySlotMove(int fromPosition, int toPosition) {
+        if (inventoryLinkedList == null) return;
+
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        Player player = repo.getCurrentPlayer();
+        if (player == null) return;
+
+        boolean changed = inventoryLinkedList.moveItem(fromPosition, toPosition, Constants.MAX_STACK_SIZE);
+        if (changed) {
+            // Clear selection and detail panel since items moved
+            selectedSlotIndex = -1;
+            adapter.clearSelection();
+            itemDetailPanel.setVisibility(View.GONE);
+
+            repo.savePlayer();
+            adapter.notifyDataSetChanged();
+        }
+    }
+
     private void setupEquipSlotTap(TextView slotView, String equipSlotName) {
         slotView.setOnClickListener(v -> {
             GameRepository repo = GameRepository.getInstance(requireContext());
@@ -127,6 +159,10 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
             }
             player.getEquipment().remove(eq);
             player.ensureInventoryCapacity();
+
+            // Rebuild linked list after inventory change
+            inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
+
             repo.savePlayer();
             adapter.notifyDataSetChanged();
             updateEquipmentDisplay(player, repo);
@@ -152,9 +188,14 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
                 case DragEvent.ACTION_DROP:
                     v.setBackgroundResource(R.drawable.inventory_slot_background);
                     Object localState = event.getLocalState();
-                    if (localState instanceof InventorySlot) {
-                        InventorySlot draggedSlot = (InventorySlot) localState;
-                        handleDragEquip(draggedSlot, equipSlotName);
+                    if (localState instanceof Integer) {
+                        int fromPos = (Integer) localState;
+                        GameRepository repo = GameRepository.getInstance(requireContext());
+                        Player player = repo.getCurrentPlayer();
+                        if (player != null && fromPos >= 0 && fromPos < player.getInventory().size()) {
+                            InventorySlot draggedSlot = player.getInventory().get(fromPos);
+                            handleDragEquip(draggedSlot, equipSlotName);
+                        }
                     }
                     return true;
                 case DragEvent.ACTION_DRAG_ENDED:
@@ -191,7 +232,7 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
             player.getEquipment().remove(existing);
         }
 
-        // Remove from inventory and equip
+        // Remove from inventory and equip - clear the source slot completely
         draggedSlot.setQuantity(draggedSlot.getQuantity() - 1);
         if (draggedSlot.getQuantity() <= 0) {
             draggedSlot.setItemId(null);
@@ -201,6 +242,9 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         EquipmentSlot newEquip = new EquipmentSlot(item.getItemId(), targetEquipSlot);
         player.getEquipment().add(newEquip);
         player.ensureInventoryCapacity();
+
+        // Rebuild linked list after inventory change
+        inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
 
         repo.savePlayer();
         adapter.notifyDataSetChanged();
@@ -225,6 +269,12 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         GameRepository repo = GameRepository.getInstance(requireContext());
         ItemDef item = repo.getItemRegistry().getItem(slot.getItemId());
         if (item == null) {
+            // Ghost item: slot claims to have an item but registry doesn't know it.
+            // Clear the slot to eliminate the ghost.
+            slot.setItemId(null);
+            slot.setQuantity(0);
+            repo.savePlayer();
+            adapter.notifyDataSetChanged();
             itemDetailPanel.setVisibility(View.GONE);
             return;
         }
@@ -282,6 +332,9 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         // Ensure inventory capacity is updated (e.g., backpack adds slots)
         player.ensureInventoryCapacity();
 
+        // Rebuild linked list after inventory change
+        inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
+
         repo.savePlayer();
         adapter.notifyDataSetChanged();
         updateEquipmentDisplay(player, repo);
@@ -324,6 +377,8 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
                 slot.setItemId(null);
                 slot.setQuantity(0);
             }
+            // Rebuild linked list
+            inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
             repo.savePlayer();
             repo.saveCurrentRoom();
             adapter.notifyDataSetChanged();
@@ -356,6 +411,9 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
             slot.setQuantity(0);
         }
 
+        // Rebuild linked list
+        inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
+
         repo.savePlayer();
         adapter.notifyDataSetChanged();
         itemDetailPanel.setVisibility(View.GONE);
@@ -376,13 +434,16 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         InventorySlot slot = player.getInventory().get(selectedSlotIndex);
         if (slot.isEmpty()) return;
 
-        String itemId = slot.getItemId();
+        // Clear the slot completely to prevent ghost items
         slot.setItemId(null);
         slot.setQuantity(0);
 
-        player.compactInventory();
+        // Rebuild linked list after drop
+        inventoryLinkedList = InventoryLinkedList.fromList(player.getInventory());
+
         repo.savePlayer();
         selectedSlotIndex = -1;
+        adapter.clearSelection();
         adapter.notifyDataSetChanged();
         itemDetailPanel.setVisibility(View.GONE);
 
