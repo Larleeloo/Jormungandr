@@ -69,36 +69,45 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         Room room = repo.getCurrentRoom();
 
         if (room == null) {
+            // Room should already be loaded asynchronously before this fragment
+            // is shown. If it's still null, load it on a background thread.
             Player player = repo.getCurrentPlayer();
             if (player != null) {
-                room = repo.loadOrGenerateRoom(player.getCurrentRoomId());
+                repo.loadOrGenerateRoomAsync(player.getCurrentRoomId(), loaded -> {
+                    if (loaded != null && isAdded()) {
+                        displayRoom(loaded);
+                    }
+                });
             }
+            return;
         }
 
-        if (room != null) {
-            roomCanvas.setRoom(room);
+        displayRoom(room);
+    }
 
-            // Show torch button if player has torches and room has hidden objects
-            updateTorchButton(room);
+    private void displayRoom(Room room) {
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        roomCanvas.setRoom(room);
 
-            // Check for living creature - auto-enter combat
-            if (room.hasLivingCreature()) {
-                RoomObject creature = room.getFirstLivingCreature();
-                showMessage("A " + creature.getCreatureDefId().replace("_", " ") +
-                        " blocks your path! (Tap it to fight)");
-            }
+        // Show torch button if player has torches and room has hidden objects
+        updateTorchButton(room);
 
-            // Waypoint notification
-            if (room.isWaypoint() && !RoomIdHelper.isHub(room.getRoomId())) {
-                // Auto-discover waypoint when visited
-                Player player = GameRepository.getInstance(requireContext()).getCurrentPlayer();
-                if (player != null && !player.getDiscoveredWaypoints().contains(room.getRoomId())) {
-                    player.getDiscoveredWaypoints().add(room.getRoomId());
-                    GameRepository.getInstance(requireContext()).savePlayer();
-                    showMessage("Waypoint discovered! Tap the crystal to save and teleport.");
-                } else {
-                    showMessage("Waypoint - Tap the crystal to save and teleport.");
-                }
+        // Check for living creature - auto-enter combat
+        if (room.hasLivingCreature()) {
+            RoomObject creature = room.getFirstLivingCreature();
+            showMessage("A " + creature.getCreatureDefId().replace("_", " ") +
+                    " blocks your path! (Tap it to fight)");
+        }
+
+        // Waypoint notification
+        if (room.isWaypoint() && !RoomIdHelper.isHub(room.getRoomId())) {
+            Player player = repo.getCurrentPlayer();
+            if (player != null && !player.getDiscoveredWaypoints().contains(room.getRoomId())) {
+                player.getDiscoveredWaypoints().add(room.getRoomId());
+                repo.savePlayer();
+                showMessage("Waypoint discovered! Tap the crystal to save and teleport.");
+            } else {
+                showMessage("Waypoint - Tap the crystal to save and teleport.");
             }
         }
     }

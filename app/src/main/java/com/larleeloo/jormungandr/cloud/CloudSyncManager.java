@@ -331,6 +331,13 @@ public class CloudSyncManager {
         });
     }
 
+    /**
+     * Run a task on the background executor where network I/O is permitted.
+     */
+    public void executeInBackground(Runnable task) {
+        executor.execute(task);
+    }
+
     public void shutdown() {
         executor.shutdown();
     }
