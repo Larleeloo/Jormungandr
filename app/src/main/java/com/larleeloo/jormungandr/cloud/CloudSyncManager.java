@@ -33,11 +33,13 @@ public class CloudSyncManager {
 
     private final AppsScriptClient client;
     private final ExecutorService executor;
+    private final ExecutorService prefetchExecutor;
     private final Handler mainHandler;
 
     public CloudSyncManager() {
         this.client = new AppsScriptClient();
         this.executor = Executors.newSingleThreadExecutor();
+        this.prefetchExecutor = Executors.newFixedThreadPool(3);
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
 
@@ -338,7 +340,16 @@ public class CloudSyncManager {
         executor.execute(task);
     }
 
+    /**
+     * Run a low-priority prefetch task on a separate thread pool so it
+     * doesn't block navigation or sync operations on the main executor.
+     */
+    public void executeInPrefetchPool(Runnable task) {
+        prefetchExecutor.execute(task);
+    }
+
     public void shutdown() {
         executor.shutdown();
+        prefetchExecutor.shutdown();
     }
 }
