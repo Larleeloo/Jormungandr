@@ -54,8 +54,8 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
 
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
-        Room hubRoom = repo.getCurrentRoom();
-        if (player == null || hubRoom == null) return;
+        Room currentRoom = repo.getCurrentRoom();
+        if (player == null || currentRoom == null) return;
 
         goldDisplay = view.findViewById(R.id.trade_gold);
         goldDisplay.setText("Gold: " + player.getGold());
@@ -68,21 +68,21 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         RecyclerView tradeList = view.findViewById(R.id.trade_list);
         tradeList.setLayoutManager(new LinearLayoutManager(requireContext()));
 
-        List<TradeListing> listings = hubRoom.getTradeListings();
+        List<TradeListing> listings = currentRoom.getTradeListings();
         adapter = new TradeListingAdapter(listings, repo.getItemRegistry(),
                 player.getAccessCode(), this);
         tradeList.setAdapter(adapter);
 
         // Fetch latest trade listings from cloud
         CloudSyncManager syncManager = repo.getCloudSyncManager();
-        syncManager.syncTradesFromCloud(hubRoom.getRoomId(), (success, message) -> {
+        syncManager.syncTradesFromCloud(currentRoom.getRoomId(), (success, message) -> {
             if (isAdded()) {
                 adapter.notifyDataSetChanged();
             }
         });
 
         selectItemBtn.setOnClickListener(v -> showItemPicker(player, repo));
-        listBtn.setOnClickListener(v -> listSelectedItem(player, hubRoom, repo));
+        listBtn.setOnClickListener(v -> listSelectedItem(player, currentRoom, repo));
     }
 
     private void showItemPicker(Player player, GameRepository repo) {
@@ -127,7 +127,7 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
                 .show();
     }
 
-    private void listSelectedItem(Player player, Room hubRoom, GameRepository repo) {
+    private void listSelectedItem(Player player, Room currentRoom, GameRepository repo) {
         if (selectedInventorySlot < 0 || selectedItemId == null) {
             Toast.makeText(requireContext(), "Select an item first", Toast.LENGTH_SHORT).show();
             return;
@@ -195,16 +195,16 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
             slot.setQuantity(remaining);
         }
 
-        // Add trade listing to hub room
+        // Add trade listing to current room
         TradeListing listing = new TradeListing(selectedItemId, listQty, price,
                 player.getName(), player.getAccessCode());
-        hubRoom.getTradeListings().add(listing);
+        currentRoom.getTradeListings().add(listing);
 
         // Persist player and trade listings separately
         repo.savePlayer();
-        saveTrades(hubRoom, repo);
+        saveTrades(currentRoom, repo);
 
-        adapter.notifyItemInserted(hubRoom.getTradeListings().size() - 1);
+        adapter.notifyItemInserted(currentRoom.getTradeListings().size() - 1);
         goldDisplay.setText("Gold: " + player.getGold());
 
         ItemDef item = repo.getItemRegistry().getItem(selectedItemId);
@@ -228,8 +228,8 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
     public void onBuy(int position, TradeListing listing) {
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
-        Room hubRoom = repo.getCurrentRoom();
-        if (player == null || hubRoom == null) return;
+        Room currentRoom = repo.getCurrentRoom();
+        if (player == null || currentRoom == null) return;
 
         if (player.getAccessCode().equals(listing.getSellerAccessCode())) {
             Toast.makeText(requireContext(), "You can't buy your own listing", Toast.LENGTH_SHORT).show();
@@ -251,11 +251,11 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         player.setGold(player.getGold() - listing.getPrice());
 
         // Remove the listing
-        hubRoom.getTradeListings().remove(position);
+        currentRoom.getTradeListings().remove(position);
 
         // Persist player and trade listings separately
         repo.savePlayer();
-        saveTrades(hubRoom, repo);
+        saveTrades(currentRoom, repo);
 
         adapter.notifyItemRemoved(position);
         goldDisplay.setText("Gold: " + player.getGold());
@@ -270,8 +270,8 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
     public void onCancel(int position, TradeListing listing) {
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
-        Room hubRoom = repo.getCurrentRoom();
-        if (player == null || hubRoom == null) return;
+        Room currentRoom = repo.getCurrentRoom();
+        if (player == null || currentRoom == null) return;
 
         // Return item to seller's inventory
         boolean added = player.addItemToInventory(listing.getItemId(), listing.getQuantity());
@@ -281,11 +281,11 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
         }
 
         // Remove listing
-        hubRoom.getTradeListings().remove(position);
+        currentRoom.getTradeListings().remove(position);
 
         // Persist player and trade listings separately
         repo.savePlayer();
-        saveTrades(hubRoom, repo);
+        saveTrades(currentRoom, repo);
 
         adapter.notifyItemRemoved(position);
 
@@ -295,8 +295,8 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
                 Toast.LENGTH_SHORT).show();
     }
 
-    private void saveTrades(Room hubRoom, GameRepository repo) {
+    private void saveTrades(Room currentRoom, GameRepository repo) {
         repo.getCloudSyncManager().syncTradesToCloud(
-                hubRoom.getRoomId(), hubRoom.getTradeListings(), null);
+                currentRoom.getRoomId(), currentRoom.getTradeListings(), null);
     }
 }
