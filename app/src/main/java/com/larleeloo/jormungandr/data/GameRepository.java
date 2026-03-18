@@ -14,6 +14,9 @@ import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.FormulaHelper;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.util.Map;
 
 /**
@@ -216,6 +219,38 @@ public class GameRepository {
         }
 
         return room;
+    }
+
+    // ---- Async room operations ----
+
+    public interface RoomCallback {
+        void onComplete(Room room);
+    }
+
+    /**
+     * Load or generate a room on a background thread where network I/O is
+     * permitted, then deliver the result on the main thread.
+     */
+    public void loadOrGenerateRoomAsync(String roomId, RoomCallback callback) {
+        cloudSyncManager.executeInBackground(() -> {
+            Room room = loadOrGenerateRoom(roomId);
+            if (callback != null) {
+                new Handler(Looper.getMainLooper()).post(() -> callback.onComplete(room));
+            }
+        });
+    }
+
+    /**
+     * Navigate to a room on a background thread (cloud load + player state
+     * update), then deliver the result on the main thread.
+     */
+    public void navigateToRoomAsync(String roomId, RoomCallback callback) {
+        cloudSyncManager.executeInBackground(() -> {
+            Room room = navigateToRoom(roomId);
+            if (callback != null) {
+                new Handler(Looper.getMainLooper()).post(() -> callback.onComplete(room));
+            }
+        });
     }
 
     // ---- Registries ----

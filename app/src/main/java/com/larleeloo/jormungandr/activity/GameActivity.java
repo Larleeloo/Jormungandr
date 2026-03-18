@@ -18,13 +18,11 @@ import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.fragment.CharacterFragment;
 import com.larleeloo.jormungandr.fragment.CombatFragment;
-import com.larleeloo.jormungandr.fragment.HubFragment;
 import com.larleeloo.jormungandr.fragment.InventoryFragment;
 import com.larleeloo.jormungandr.fragment.LoadingFragment;
 import com.larleeloo.jormungandr.fragment.MapFragment;
 import com.larleeloo.jormungandr.fragment.RoomFragment;
 import com.larleeloo.jormungandr.model.Player;
-import com.larleeloo.jormungandr.model.Room;
 import com.larleeloo.jormungandr.util.Constants;
 
 public class GameActivity extends AppCompatActivity {
@@ -36,7 +34,6 @@ public class GameActivity extends AppCompatActivity {
     private Button btnInventory, btnCharacter, btnMap, btnRoom;
     private Fragment currentFragment;
     private String currentFragmentTag;
-    private CloudSyncManager cloudSyncManager;
     private final Handler syncUiHandler = new Handler(Looper.getMainLooper());
     private Runnable syncHideRunnable;
 
@@ -71,26 +68,26 @@ public class GameActivity extends AppCompatActivity {
         // Sync status indicator
         syncIndicator = findViewById(R.id.sync_indicator);
 
-        // Cloud sync setup
-        cloudSyncManager = new CloudSyncManager();
         if (Constants.APPS_SCRIPT_URL.isEmpty()) {
             showSyncStatus(false, "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java");
         }
 
-        // Load the initial room
+        // Load the initial room asynchronously so the cloud fetch runs off
+        // the main thread (where network I/O is forbidden on Android).
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
         String startRoom = Constants.HUB_ROOM_ID;
         if (player != null) {
             startRoom = player.getCurrentRoomId();
-            repo.loadOrGenerateRoom(startRoom);
         }
 
-        updateHud();
-        // All rooms (including hub) start with RoomFragment canvas view.
-        // Hub/waypoint rooms let the player tap the crystal to access the
-        // scrollable HubFragment portal interface.
-        showFragment(new RoomFragment(), "room");
+        showFragment(new LoadingFragment(), "loading");
+        showSyncStatus(true, "Syncing...");
+        repo.loadOrGenerateRoomAsync(startRoom, room -> {
+            updateHud();
+            showSyncStatus(true, "Synced");
+            showFragment(new RoomFragment(), "room");
+        });
     }
 
     public void showFragment(Fragment fragment, String tag) {
@@ -105,39 +102,30 @@ public class GameActivity extends AppCompatActivity {
     }
 
     public void navigateToRoom(String roomId) {
-        // Show loading screen with random item/creature
+        // Show loading screen
         showFragment(new LoadingFragment(), "loading");
 
         GameRepository repo = GameRepository.getInstance(this);
-        Player player = repo.getCurrentPlayer();
 
-        // Upload the room we're LEAVING to cloud (lazy sync)
-        Room leavingRoom = repo.getCurrentRoom();
-        if (leavingRoom != null && player != null && cloudSyncManager != null) {
-            cloudSyncManager.syncRoomToCloud(leavingRoom, null); // fire-and-forget
-        }
+        // Upload the room we're LEAVING to cloud (fire-and-forget async)
+        repo.saveCurrentRoom();
 
         long loadStart = System.currentTimeMillis();
+        showSyncStatus(true, "Syncing...");
 
-        // Navigate (loads/generates the new room locally)
-        Room room = repo.navigateToRoom(roomId);
-        updateHud();
+        // Navigate asynchronously — the cloud fetch now runs on a background
+        // thread, so loadOrGenerateRoom can actually reach Drive and retrieve
+        // saved room state (chests opened, creatures defeated, items dropped).
+        repo.navigateToRoomAsync(roomId, room -> {
+            updateHud();
+            showSyncStatus(true, "Synced");
 
-        // Sync player state and download the entering room from cloud
-        if (player != null && cloudSyncManager != null) {
-            showSyncStatus(true, "Syncing...");
-            cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
-                    showSyncStatus(success, message));
-            cloudSyncManager.syncRoomFromCloud(roomId, null);
-        }
+            // Ensure the loading screen shows for at least LOADING_SCREEN_MIN_MS
+            long elapsed = System.currentTimeMillis() - loadStart;
+            long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
 
-        // Show loading screen for at least LOADING_SCREEN_MIN_MS
-        long elapsed = System.currentTimeMillis() - loadStart;
-        long remaining = Math.max(0, LOADING_SCREEN_MIN_MS - elapsed);
-
-        // All rooms use RoomFragment canvas view (hub/waypoint rooms
-        // let the player tap the crystal to access the scrollable portal interface)
-        syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
+            syncUiHandler.postDelayed(() -> showFragment(new RoomFragment(), "room"), remaining);
+        });
     }
 
     public void startCombat(String creatureDefId, int level, int hp) {
@@ -149,39 +137,36 @@ public class GameActivity extends AppCompatActivity {
         updateHud();
         GameRepository repo = GameRepository.getInstance(this);
         Player player = repo.getCurrentPlayer();
+        CloudSyncManager cloudSync = repo.getCloudSyncManager();
+
         if (victory) {
             // Sync player and room after combat victory
-            if (player != null && cloudSyncManager != null) {
-                Room room = repo.getCurrentRoom();
+            if (player != null) {
                 showSyncStatus(true, "Syncing...");
-                cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
+                cloudSync.syncPlayerToCloud(player, (success, message) ->
                         showSyncStatus(success, message));
-                if (room != null) {
-                    cloudSyncManager.syncRoomToCloud(room, null);
-                }
+                repo.saveCurrentRoom();
             }
             showFragment(new RoomFragment(), "room");
         } else {
             // Death: return to hub
             if (player != null) {
                 // Upload the room where player died
-                Room deathRoom = repo.getCurrentRoom();
-                if (cloudSyncManager != null && deathRoom != null) {
-                    cloudSyncManager.syncRoomToCloud(deathRoom, null);
-                }
+                repo.saveCurrentRoom();
 
                 player.setHp(player.getMaxHp() / 2);
-                player.setRoomsVisitedSinceHub(0);
-                repo.navigateToRoom("r0_00000");
-                repo.savePlayer();
-                // Sync respawn state
-                if (cloudSyncManager != null) {
-                    showSyncStatus(true, "Syncing...");
-                    cloudSyncManager.syncPlayerToCloud(player, (success, message) ->
-                            showSyncStatus(success, message));
-                }
+
+                // Navigate to hub asynchronously so cloud fetch works
+                showFragment(new LoadingFragment(), "loading");
+                showSyncStatus(true, "Syncing...");
+                repo.navigateToRoomAsync(Constants.HUB_ROOM_ID, room -> {
+                    updateHud();
+                    showSyncStatus(true, "Synced");
+                    showFragment(new RoomFragment(), "room");
+                });
+            } else {
+                showFragment(new RoomFragment(), "room");
             }
-            showFragment(new RoomFragment(), "room");
         }
     }
 
@@ -236,20 +221,10 @@ public class GameActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // Auto-save on pause
+        // Auto-save on pause via repo's CloudSyncManager (async)
         GameRepository repo = GameRepository.getInstance(this);
         repo.savePlayer();
         repo.saveCurrentRoom();
-
-        // Sync player and current room individually on pause
-        Player player = repo.getCurrentPlayer();
-        Room room = repo.getCurrentRoom();
-        if (player != null && cloudSyncManager != null) {
-            cloudSyncManager.syncPlayerToCloud(player, null);
-            if (room != null) {
-                cloudSyncManager.syncRoomToCloud(room, null);
-            }
-        }
     }
 
     @Override
