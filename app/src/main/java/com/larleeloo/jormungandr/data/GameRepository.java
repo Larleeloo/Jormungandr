@@ -19,6 +19,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Singleton coordinating all game data access — fully cloud-backed.
@@ -44,6 +45,7 @@ public class GameRepository {
     private final CloudSyncManager cloudSyncManager;
     private final RoomGenerator roomGenerator;
     private final LruCache<String, Room> roomCache = new LruCache<>(ROOM_CACHE_SIZE);
+    private final ConcurrentHashMap<String, Object> roomLocks = new ConcurrentHashMap<>();
 
     private Player currentPlayer;
     private Room currentRoom;
@@ -137,38 +139,61 @@ public class GameRepository {
     /**
      * Fetch a room from cloud (or generate it) and put it in the cache,
      * but do NOT update currentRoom. Safe to call from prefetch threads
-     * or background refresh without disrupting the player's active room.
+     * without disrupting the player's active room.
+     *
+     * Uses per-room locking so that concurrent callers (e.g. multiple
+     * prefetch threads) cannot generate the same room twice with
+     * different random content.
      */
     public Room fetchRoom(String roomId) {
-        int region = RoomIdHelper.getRegion(roomId);
-        int roomNumber = RoomIdHelper.getRoomNumber(roomId);
-        int playerLevel = currentPlayer != null ? currentPlayer.getLevel() : 1;
-
-        // 1. Try fetching from Drive cloud storage
-        Room cloudRoom = roomFileManager.loadRoom(roomId);
-        if (cloudRoom != null) {
-            applyMeshDoors(cloudRoom, region, roomNumber);
-            roomCache.put(roomId, cloudRoom);
-            return cloudRoom;
+        // Fast path — already cached, no lock needed
+        Room cached = roomCache.get(roomId);
+        if (cached != null) {
+            return cached;
         }
 
-        // 2. No cloud data — generate room content based on WorldMesh position
-        Room room;
-        if (region == 0) {
-            room = roomGenerator.generateHubRoom();
-        } else {
-            room = roomGenerator.generateRoom(region, roomNumber, playerLevel);
+        // Per-room lock prevents two threads from generating the same
+        // room concurrently (e.g. Room C adjacent to both A and B being
+        // prefetched on separate threads).
+        Object lock = roomLocks.computeIfAbsent(roomId, k -> new Object());
+        synchronized (lock) {
+            // Double-check: another thread may have populated the cache
+            // while we waited for the lock.
+            cached = roomCache.get(roomId);
+            if (cached != null) {
+                return cached;
+            }
+
+            int region = RoomIdHelper.getRegion(roomId);
+            int roomNumber = RoomIdHelper.getRoomNumber(roomId);
+            int playerLevel = currentPlayer != null ? currentPlayer.getLevel() : 1;
+
+            // 1. Try fetching from Drive cloud storage
+            Room cloudRoom = roomFileManager.loadRoom(roomId);
+            if (cloudRoom != null) {
+                applyMeshDoors(cloudRoom, region, roomNumber);
+                roomCache.put(roomId, cloudRoom);
+                return cloudRoom;
+            }
+
+            // 2. No cloud data — generate room content based on WorldMesh position
+            Room room;
+            if (region == 0) {
+                room = roomGenerator.generateHubRoom();
+            } else {
+                room = roomGenerator.generateRoom(region, roomNumber, playerLevel);
+            }
+
+            if (currentPlayer != null) {
+                room.setFirstVisitedBy(currentPlayer.getAccessCode());
+            }
+
+            // Save generated room to cloud
+            roomFileManager.saveRoom(room);
+            roomCache.put(roomId, room);
+
+            return room;
         }
-
-        if (currentPlayer != null) {
-            room.setFirstVisitedBy(currentPlayer.getAccessCode());
-        }
-
-        // Save generated room to cloud
-        roomFileManager.saveRoom(room);
-        roomCache.put(roomId, room);
-
-        return room;
     }
 
     /**
@@ -280,21 +305,18 @@ public class GameRepository {
     public void navigateToRoomAsync(String roomId, RoomCallback callback) {
         Room cached = roomCache.get(roomId);
         if (cached != null) {
-            // Use cached room — apply player state on main thread immediately
+            // Use cached room — apply player state on main thread immediately.
+            // We do NOT launch a background cloud refresh here because the
+            // cached copy is the authoritative local state: it may already
+            // contain player modifications (opened chests, defeated creatures)
+            // that are queued for upload. A background fetchRoom() would
+            // overwrite the cache entry with stale cloud data, causing those
+            // modifications to be lost on the next visit.
             currentRoom = cached;
             applyNavigationState(roomId, cached);
             if (callback != null) {
                 callback.onComplete(cached);
             }
-            // Refresh the cache from cloud in the background so that the
-            // NEXT visit to this room uses fresh data. We intentionally do
-            // NOT overwrite currentRoom here — the cached copy is the
-            // authoritative local state and may already contain player
-            // modifications (opened chests, defeated creatures) that haven't
-            // finished uploading yet.
-            cloudSyncManager.executeInBackground(() -> {
-                fetchRoom(roomId);
-            });
             return;
         }
 
