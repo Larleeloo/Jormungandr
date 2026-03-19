@@ -108,6 +108,10 @@ function doPost(e) {
         return jsonResponse(handleAdminResetAllNotes(body));
       case "adminResetAllPlayers":
         return jsonResponse(handleAdminResetAllPlayers(body));
+      case "adminResetAllTrades":
+        return jsonResponse(handleAdminResetAllTrades(body));
+      case "adminResetAllActions":
+        return jsonResponse(handleAdminResetAllActions(body));
       default:
         return jsonResponse({ success: false, message: "Unknown action: " + action });
     }
@@ -546,6 +550,24 @@ function handleAdminResetAllPlayers(body) {
   }
   var count = deleteAllFilesInFolder(PLAYER_FOLDER_ID);
   return { success: true, message: "Reset complete. " + count + " player files deleted." };
+}
+
+function handleAdminResetAllTrades(body) {
+  var code = (body.code || "").trim().toUpperCase();
+  if (!validateAdminCode(code)) {
+    return { success: false, message: "Unauthorized. Admin access required." };
+  }
+  var count = deleteAllFilesInFolder(TRADES_FOLDER_ID);
+  return { success: true, message: "Reset complete. " + count + " trade files deleted." };
+}
+
+function handleAdminResetAllActions(body) {
+  var code = (body.code || "").trim().toUpperCase();
+  if (!validateAdminCode(code)) {
+    return { success: false, message: "Unauthorized. Admin access required." };
+  }
+  var count = deleteAllFilesInFolder(ACTIONS_FOLDER_ID);
+  return { success: true, message: "Reset complete. " + count + " action files deleted." };
 }
 
 // ========== UTILITY ==========
