@@ -68,6 +68,9 @@ public class ProximityManager {
      */
     private CloudSyncManager cloudSyncManager;
 
+    /** Optional TurnManager to coordinate turn-based interactions during co-location. */
+    private TurnManager turnManager;
+
     /** Immutable snapshot of the last poll result (main-thread safe). */
     private volatile List<NearbyPlayer> lastNearby = Collections.emptyList();
 
@@ -83,6 +86,14 @@ public class ProximityManager {
      */
     public void setCloudSyncManager(CloudSyncManager cloudSyncManager) {
         this.cloudSyncManager = cloudSyncManager;
+    }
+
+    public void setTurnManager(TurnManager turnManager) {
+        this.turnManager = turnManager;
+    }
+
+    public TurnManager getTurnManager() {
+        return turnManager;
     }
 
     public void setListener(ProximityListener listener) {
@@ -118,6 +129,11 @@ public class ProximityManager {
             mainHandler.removeCallbacks(pollRunnable);
         }
 
+        // Leave the turn queue if active
+        if (turnManager != null) {
+            turnManager.deactivate();
+        }
+
         // Trigger cleanup for the room we were tracking. The player is leaving,
         // so any action entries older than ACTION_TTL_SECONDS can be pruned, and
         // if the file is entirely expired it will be deleted from Drive.
@@ -137,6 +153,11 @@ public class ProximityManager {
     public void updateRoom(String roomId) {
         String oldRoom = this.currentRoomId;
         this.currentRoomId = roomId;
+
+        // Leave the turn queue for the old room
+        if (turnManager != null && oldRoom != null && !oldRoom.equals(roomId)) {
+            turnManager.updateRoom(roomId);
+        }
 
         // Clean up the room we just left — its action file may now be stale
         // if we were the last player nearby.
@@ -215,6 +236,15 @@ public class ProximityManager {
                 final List<NearbyPlayer> nearby = Collections.unmodifiableList(parsed);
                 lastNearby = nearby;
 
+                // Notify TurnManager of co-location changes
+                if (turnManager != null) {
+                    boolean coLocated = false;
+                    for (NearbyPlayer np : nearby) {
+                        if (np.isSameRoom()) { coLocated = true; break; }
+                    }
+                    turnManager.onCoLocationChanged(coLocated, room);
+                }
+
                 mainHandler.post(() -> {
                     if (listener != null) {
                         listener.onNearbyPlayersChanged(nearby);
@@ -239,5 +269,8 @@ public class ProximityManager {
     public void shutdown() {
         stop();
         executor.shutdown();
+        if (turnManager != null) {
+            turnManager.shutdown();
+        }
     }
 }

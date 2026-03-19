@@ -113,4 +113,8 @@ public final class Constants {
     // when data is considered stale.
     /** How long (seconds) action entries survive before being pruned from Drive. */
     public static final long ACTION_TTL_SECONDS = 3600; // 1 hour
+
+    // Turn-based co-location
+    /** Seconds before an idle turn auto-advances to the next player. */
+    public static final int TURN_TIMEOUT_SECONDS = 30;
 }

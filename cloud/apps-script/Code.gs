@@ -71,6 +71,11 @@ var GAME_VERSION     = "1.0";
 // reclaim the Drive storage slot entirely.
 var ACTION_TTL_SECONDS = 3600; // 1 hour — actions older than this are pruned
 
+// Turn-based co-location — when 2+ players occupy the same room, they take
+// turns interacting with objects. If a player holds a turn without acting for
+// this many seconds, the server auto-advances to the next player.
+var TURN_TIMEOUT_SECONDS = 30;
+
 // Maximum number of action files that can exist across all rooms. This is a
 // safety net: even if many rooms accumulate action files simultaneously, the
 // scheduled cleanup will trash the oldest files once this cap is exceeded.
@@ -135,6 +140,14 @@ function doPost(e) {
         return jsonResponse(handleAdminResetAllActions(body));
       case "cleanupActions":
         return jsonResponse(handleCleanupActions(body));
+      case "joinTurnQueue":
+        return jsonResponse(handleJoinTurnQueue(body));
+      case "endTurn":
+        return jsonResponse(handleEndTurn(body));
+      case "leaveTurnQueue":
+        return jsonResponse(handleLeaveTurnQueue(body));
+      case "getTurnState":
+        return jsonResponse(handleGetTurnState(body));
       default:
         return jsonResponse({ success: false, message: "Unknown action: " + action });
     }
@@ -560,6 +573,198 @@ function parseRoomNumber(roomId) {
   return parseInt(roomId.substring(idx + 1), 10) || 0;
 }
 
+// ========== TURN-BASED CO-LOCATION HANDLERS ==========
+
+/**
+ * Add a player to the turn queue for a room.
+ * If the queue doesn't exist, create it with this player first in line.
+ * If the player is already in the queue, just return current state.
+ * Request: { roomId, code }
+ */
+function handleJoinTurnQueue(body) {
+  var roomId = (body.roomId || "").trim();
+  var code = (body.code || "").trim().toUpperCase();
+  if (!roomId || !code) {
+    return { success: false, message: "Missing roomId or code." };
+  }
+
+  var state = loadTurnState(roomId);
+  var now = Math.floor(Date.now() / 1000);
+
+  // Auto-advance if current turn has timed out
+  state = applyTurnTimeout(state, now);
+
+  // Add to queue if not already present
+  if (state.queue.indexOf(code) === -1) {
+    state.queue.push(code);
+    // If this is the first player, they get the turn
+    if (state.queue.length === 1) {
+      state.currentIndex = 0;
+      state.turnStartedAt = now;
+    }
+  }
+
+  saveTurnState(roomId, state);
+  return { success: true, message: "Joined queue.", data: JSON.stringify(state) };
+}
+
+/**
+ * End the current player's turn and advance to the next player.
+ * Only the current turn holder can end their turn.
+ * Request: { roomId, code }
+ */
+function handleEndTurn(body) {
+  var roomId = (body.roomId || "").trim();
+  var code = (body.code || "").trim().toUpperCase();
+  if (!roomId || !code) {
+    return { success: false, message: "Missing roomId or code." };
+  }
+
+  var state = loadTurnState(roomId);
+  var now = Math.floor(Date.now() / 1000);
+
+  // Auto-advance if timed out (someone else may have timed out)
+  state = applyTurnTimeout(state, now);
+
+  if (state.queue.length === 0) {
+    return { success: true, message: "Queue empty.", data: JSON.stringify(state) };
+  }
+
+  var currentHolder = state.queue[state.currentIndex % state.queue.length];
+  if (currentHolder !== code) {
+    return { success: false, message: "Not your turn.", data: JSON.stringify(state) };
+  }
+
+  // Advance to next player
+  state.currentIndex = (state.currentIndex + 1) % state.queue.length;
+  state.turnStartedAt = now;
+
+  saveTurnState(roomId, state);
+  return { success: true, message: "Turn ended.", data: JSON.stringify(state) };
+}
+
+/**
+ * Remove a player from the turn queue (they left the room or disconnected).
+ * If the departing player held the current turn, advance to the next player.
+ * If the queue becomes empty, delete the turn file.
+ * Request: { roomId, code }
+ */
+function handleLeaveTurnQueue(body) {
+  var roomId = (body.roomId || "").trim();
+  var code = (body.code || "").trim().toUpperCase();
+  if (!roomId || !code) {
+    return { success: false, message: "Missing roomId or code." };
+  }
+
+  var state = loadTurnState(roomId);
+  var now = Math.floor(Date.now() / 1000);
+
+  var idx = state.queue.indexOf(code);
+  if (idx === -1) {
+    // Not in queue — nothing to do
+    return { success: true, message: "Not in queue.", data: JSON.stringify(state) };
+  }
+
+  var wasCurrentTurn = (idx === state.currentIndex % state.queue.length);
+
+  // Remove from queue
+  state.queue.splice(idx, 1);
+
+  if (state.queue.length === 0) {
+    // Queue empty — delete the file
+    deleteTurnState(roomId);
+    state.currentIndex = 0;
+    state.turnStartedAt = 0;
+    return { success: true, message: "Left queue (now empty).", data: JSON.stringify(state) };
+  }
+
+  // Adjust currentIndex if needed
+  if (idx < state.currentIndex) {
+    state.currentIndex--;
+  }
+  state.currentIndex = state.currentIndex % state.queue.length;
+
+  // If the leaving player held the turn, reset the turn timer
+  if (wasCurrentTurn) {
+    state.turnStartedAt = now;
+  }
+
+  saveTurnState(roomId, state);
+  return { success: true, message: "Left queue.", data: JSON.stringify(state) };
+}
+
+/**
+ * Get the current turn state for a room, auto-advancing any timed-out turns.
+ * Request: { roomId }
+ */
+function handleGetTurnState(body) {
+  var roomId = (body.roomId || "").trim();
+  if (!roomId) {
+    return { success: false, message: "No roomId provided." };
+  }
+
+  var state = loadTurnState(roomId);
+  var now = Math.floor(Date.now() / 1000);
+
+  var before = state.currentIndex;
+  state = applyTurnTimeout(state, now);
+
+  // Save if the timeout changed state
+  if (state.currentIndex !== before && state.queue.length > 0) {
+    saveTurnState(roomId, state);
+  }
+
+  return { success: true, message: "Turn state.", data: JSON.stringify(state) };
+}
+
+/**
+ * Auto-advance the turn if the current holder has timed out.
+ */
+function applyTurnTimeout(state, now) {
+  if (state.queue.length < 2) return state;
+  if (state.turnStartedAt > 0 && (now - state.turnStartedAt) > TURN_TIMEOUT_SECONDS) {
+    state.currentIndex = (state.currentIndex + 1) % state.queue.length;
+    state.turnStartedAt = now;
+  }
+  return state;
+}
+
+function loadTurnState(roomId) {
+  var fileName = "turns_" + roomId + ".json";
+  var file = findFileInFolder(ACTIONS_FOLDER_ID, fileName);
+  if (!file) {
+    return { roomId: roomId, queue: [], currentIndex: 0, turnStartedAt: 0 };
+  }
+  try {
+    var state = JSON.parse(file.getBlob().getDataAsString());
+    state.roomId = roomId;
+    if (!state.queue) state.queue = [];
+    return state;
+  } catch (err) {
+    return { roomId: roomId, queue: [], currentIndex: 0, turnStartedAt: 0 };
+  }
+}
+
+function saveTurnState(roomId, state) {
+  var fileName = "turns_" + roomId + ".json";
+  var folder = DriveApp.getFolderById(ACTIONS_FOLDER_ID);
+  var existing = findFileInFolder(ACTIONS_FOLDER_ID, fileName);
+  var jsonData = JSON.stringify(state);
+  if (existing) {
+    existing.setContent(jsonData);
+  } else {
+    folder.createFile(fileName, jsonData, MimeType.PLAIN_TEXT);
+  }
+}
+
+function deleteTurnState(roomId) {
+  var fileName = "turns_" + roomId + ".json";
+  var file = findFileInFolder(ACTIONS_FOLDER_ID, fileName);
+  if (file) {
+    file.setTrashed(true);
+  }
+}
+
 // ========== TRADE LISTING HANDLERS ==========
 
 function handleGetTrades(body) {
@@ -785,6 +990,29 @@ function sweepStaleActionFiles() {
   }
 
   Logger.log("Action sweep complete: " + deleted + " files deleted, " + pruned + " files pruned.");
+
+  // Also sweep stale turn files. A turn file is stale if its turnStartedAt
+  // is older than 2x the timeout (no one has touched it in a while).
+  var turnCutoff = now - (TURN_TIMEOUT_SECONDS * 2);
+  var turnFiles = folder.getFiles();
+  var turnDeleted = 0;
+  while (turnFiles.hasNext()) {
+    var tf = turnFiles.next();
+    if (tf.getName().indexOf("turns_") !== 0) continue;
+    try {
+      var ts = JSON.parse(tf.getBlob().getDataAsString());
+      if (!ts.queue || ts.queue.length === 0 || ts.turnStartedAt < turnCutoff) {
+        tf.setTrashed(true);
+        turnDeleted++;
+      }
+    } catch (err) {
+      tf.setTrashed(true);
+      turnDeleted++;
+    }
+  }
+  if (turnDeleted > 0) {
+    Logger.log("Turn sweep: " + turnDeleted + " stale turn files deleted.");
+  }
 }
 
 function handleAdminResetAllTrades(body) {
