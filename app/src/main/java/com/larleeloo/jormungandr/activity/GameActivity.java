@@ -88,6 +88,11 @@ public class GameActivity extends AppCompatActivity {
         // Proximity manager — polls cloud for co-located players
         proximityManager = new ProximityManager(repo.getCloudClient());
         proximityManager.setListener(this::onNearbyPlayersChanged);
+        // Give the proximity manager a reference to CloudSyncManager so it can
+        // trigger action file cleanup when polling stops (player pauses app or
+        // navigates away). Without this, stale action files would accumulate on
+        // Drive for every room the player visited during a session.
+        proximityManager.setCloudSyncManager(repo.getCloudSyncManager());
         Player player = repo.getCurrentPlayer();
         String startRoom = Constants.HUB_ROOM_ID;
         if (player != null) {

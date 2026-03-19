@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
+import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.cloud.SyncResult;
 import com.larleeloo.jormungandr.data.JsonHelper;
 import com.larleeloo.jormungandr.model.NearbyPlayer;
@@ -26,6 +27,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * The poll interval speeds up when at least one player is co-located
  * ({@link Constants#PROXIMITY_POLL_ACTIVE_MS}) and slows back down when
  * the player is alone ({@link Constants#PROXIMITY_POLL_INTERVAL_MS}).
+ *
+ * <h3>Action file cleanup</h3>
+ * Every co-location session writes action entries to a per-room JSON file on
+ * Google Drive. These files must be cleaned up when the session ends, or they
+ * will accumulate across all 80,000+ rooms. The game has no explicit "log out"
+ * event — the only reliable signals are:
+ * <ul>
+ *   <li>{@link #stop()} — called when the player pauses the app or leaves
+ *       the room view</li>
+ *   <li>{@link #updateRoom(String)} — called when the player navigates to a
+ *       new room (we clean up the old room)</li>
+ * </ul>
+ * At these points, we fire a lightweight cleanup request to the server so it
+ * can prune expired entries and delete the file if it's fully stale. This is
+ * complemented by server-side TTL pruning on every read/write and an hourly
+ * scheduled sweep for files that no client ever touches again.
  */
 public class ProximityManager {
     private static final String TAG = "ProximityManager";
@@ -44,6 +61,13 @@ public class ProximityManager {
     private String currentAccessCode;
     private String currentRoomId;
 
+    /**
+     * Optional reference to CloudSyncManager for triggering action file
+     * cleanup when polling stops. Nullable because ProximityManager can
+     * function without it (cleanup just won't happen client-side).
+     */
+    private CloudSyncManager cloudSyncManager;
+
     /** Immutable snapshot of the last poll result (main-thread safe). */
     private volatile List<NearbyPlayer> lastNearby = Collections.emptyList();
 
@@ -51,6 +75,14 @@ public class ProximityManager {
 
     public ProximityManager(AppsScriptClient client) {
         this.client = client;
+    }
+
+    /**
+     * Set the CloudSyncManager used to trigger action cleanup on disconnect.
+     * Must be called before {@link #start} for cleanup to work.
+     */
+    public void setCloudSyncManager(CloudSyncManager cloudSyncManager) {
+        this.cloudSyncManager = cloudSyncManager;
     }
 
     public void setListener(ProximityListener listener) {
@@ -70,21 +102,61 @@ public class ProximityManager {
         schedulePoll(0);
     }
 
-    /** Stop polling (e.g., when the player leaves the room view). */
+    /**
+     * Stop polling (e.g., when the player pauses the app or leaves the room).
+     *
+     * CLEANUP: When polling stops, the player is effectively "disconnecting"
+     * from the co-location system. Any action data for their current room
+     * may now be stale (no one is watching anymore). We ask the server to
+     * prune the action file for this room so it doesn't sit on Drive
+     * indefinitely. This is fire-and-forget — if the request fails, the
+     * server's hourly sweep or the next player's read/write will handle it.
+     */
     public void stop() {
         running.set(false);
         if (pollRunnable != null) {
             mainHandler.removeCallbacks(pollRunnable);
         }
+
+        // Trigger cleanup for the room we were tracking. The player is leaving,
+        // so any action entries older than ACTION_TTL_SECONDS can be pruned, and
+        // if the file is entirely expired it will be deleted from Drive.
+        requestActionCleanup(currentRoomId);
     }
 
-    /** Update the room being tracked (e.g., player navigated). */
+    /**
+     * Update the room being tracked (e.g., player navigated to a new room).
+     *
+     * CLEANUP: The player is leaving oldRoom and entering newRoom. The action
+     * file for oldRoom may no longer have any active participants after this
+     * player leaves, so we request a cleanup. This prevents action files from
+     * accumulating as players explore — without this, every room a player
+     * passes through during a session would retain its action file until the
+     * hourly sweep.
+     */
     public void updateRoom(String roomId) {
+        String oldRoom = this.currentRoomId;
         this.currentRoomId = roomId;
-        // Trigger immediate re-poll
+
+        // Clean up the room we just left — its action file may now be stale
+        // if we were the last player nearby.
+        if (oldRoom != null && !oldRoom.equals(roomId)) {
+            requestActionCleanup(oldRoom);
+        }
+
+        // Trigger immediate re-poll for the new room
         if (running.get()) {
             schedulePoll(0);
         }
+    }
+
+    /**
+     * Fire-and-forget request to prune a room's action file on Drive.
+     * Safe to call with null — will silently no-op.
+     */
+    private void requestActionCleanup(String roomId) {
+        if (roomId == null || cloudSyncManager == null) return;
+        cloudSyncManager.cleanupActions(roomId);
     }
 
     public List<NearbyPlayer> getLastNearby() {

@@ -102,4 +102,15 @@ public final class Constants {
     public static final long PROXIMITY_POLL_ACTIVE_MS = 5_000;
     /** How often (ms) to refresh room state when co-located. */
     public static final long COLOCATION_ROOM_REFRESH_MS = 5_000;
+
+    // Action data retention
+    // Co-location actions are short-lived logs (e.g., "Opened a chest") that
+    // only matter while players are nearby. Without a TTL, action files on
+    // Drive would accumulate for every room that ever had co-located players
+    // and never get cleaned up — there is no "player disconnected" event in
+    // the game's lifecycle that would trigger deletion. This constant must
+    // match ACTION_TTL_SECONDS in Code.gs so the client and server agree on
+    // when data is considered stale.
+    /** How long (seconds) action entries survive before being pruned from Drive. */
+    public static final long ACTION_TTL_SECONDS = 3600; // 1 hour
 }

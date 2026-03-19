@@ -57,6 +57,27 @@ var TRADES_FOLDER_ID = ""; // Create a Drive folder for trade listings and set I
 var ACTIONS_FOLDER_ID = ""; // Create a Drive folder for timestamped co-location actions
 var GAME_VERSION     = "1.0";
 
+// ---- Action data retention ----
+// Actions are ephemeral co-location logs. Unlike notes or trades, they have no
+// long-term value — they exist only so nearby players can see what happened in
+// a room *right now*. Without a TTL, every room that ever had two players near
+// each other would keep an actions file forever, and those files would never be
+// cleaned up because no game event triggers their deletion. With 80,000+
+// possible rooms and 25 players, the ACTIONS_FOLDER would grow unbounded.
+//
+// ACTION_TTL_SECONDS controls how long an individual action entry survives.
+// Any action older than this is pruned on the next read or write to that room's
+// file. If all entries in a file are expired, the file itself is deleted to
+// reclaim the Drive storage slot entirely.
+var ACTION_TTL_SECONDS = 3600; // 1 hour — actions older than this are pruned
+
+// Maximum number of action files that can exist across all rooms. This is a
+// safety net: even if many rooms accumulate action files simultaneously, the
+// scheduled cleanup will trash the oldest files once this cap is exceeded.
+// With 25 alpha testers spread across 80,000 rooms, hitting this limit would
+// indicate a bug or abuse rather than normal gameplay.
+var MAX_ACTION_FILES = 200;
+
 // Valid access codes (JORM-ALPHA-001 through JORM-ALPHA-025)
 var VALID_CODES = [];
 for (var i = 1; i <= 25; i++) {
@@ -112,6 +133,8 @@ function doPost(e) {
         return jsonResponse(handleAdminResetAllTrades(body));
       case "adminResetAllActions":
         return jsonResponse(handleAdminResetAllActions(body));
+      case "cleanupActions":
+        return jsonResponse(handleCleanupActions(body));
       default:
         return jsonResponse({ success: false, message: "Unknown action: " + action });
     }
@@ -373,6 +396,21 @@ function handleGetNearbyPlayers(body) {
  * Record a timestamped action for a room (used during co-location).
  * Request: { roomId, code, actionText }
  * Stored in ACTIONS_FOLDER as actions_{roomId}.json — an array of recent entries.
+ *
+ * STORAGE CLEANUP (why this matters):
+ * Every recordAction call creates or appends to a per-room JSON file on Drive.
+ * Without cleanup, these files accumulate indefinitely because:
+ *   - Players leave rooms without any "disconnect" event
+ *   - The game has 80,000+ rooms, each of which could generate a file
+ *   - Proximity polling fires every 5-10 seconds, so action writes are frequent
+ *   - Google Drive has storage quotas that would eventually be exhausted
+ *
+ * To prevent unbounded growth, we apply two cleanup strategies on every write:
+ *   1. TTL pruning: discard entries older than ACTION_TTL_SECONDS
+ *   2. Count cap: keep at most 30 entries per room (belt-and-suspenders)
+ * If after pruning no entries remain, the file is deleted entirely rather than
+ * left as an empty JSON array, so Drive doesn't accumulate thousands of
+ * near-empty files across rooms that no one is visiting anymore.
  */
 function handleRecordAction(body) {
   var roomId = (body.roomId || "").trim();
@@ -402,17 +440,42 @@ function handleRecordAction(body) {
     try { actions = JSON.parse(existing.getBlob().getDataAsString()); } catch (err) { actions = []; }
   }
 
+  // Add the new action with a server-side timestamp so all entries use a
+  // consistent clock (clients may have skewed system time).
+  var now = Math.floor(Date.now() / 1000);
   actions.push({
     playerName: playerName,
     accessCode: code,
     actionText: actionText,
-    timestamp: Math.floor(Date.now() / 1000),
+    timestamp: now,
     roomId: roomId
   });
 
-  // Keep only the latest 30 actions per room
+  // --- TTL pruning ---
+  // Remove entries older than ACTION_TTL_SECONDS. Actions are ephemeral
+  // co-location data; once a player has left the area, their hour-old
+  // "Opened a chest" log is no longer useful to anyone. Pruning on every
+  // write keeps each file small and prevents stale data from accumulating
+  // between admin resets.
+  var cutoff = now - ACTION_TTL_SECONDS;
+  actions = actions.filter(function(a) { return a.timestamp >= cutoff; });
+
+  // --- Count cap ---
+  // Even within the TTL window, cap at 30 entries per room to bound file
+  // size. In a high-activity room with many co-located players, this
+  // prevents a single file from growing too large for a single request.
   if (actions.length > 30) {
     actions = actions.slice(actions.length - 30);
+  }
+
+  // --- Empty file cleanup ---
+  // If all entries were expired (shouldn't happen since we just added one,
+  // but defensive), delete the file to avoid leaving empty stubs on Drive.
+  if (actions.length === 0) {
+    if (existing) {
+      existing.setTrashed(true);
+    }
+    return { success: true, message: "Action recorded (file pruned)." };
   }
 
   var jsonData = JSON.stringify(actions);
@@ -428,6 +491,13 @@ function handleRecordAction(body) {
 /**
  * Get recent timestamped actions for a room.
  * Request: { roomId, since } — since is an epoch-second cutoff (optional).
+ *
+ * STORAGE CLEANUP (read-path pruning):
+ * Reads are a natural opportunity to prune stale data. If a client fetches
+ * actions and everything in the file is expired, we delete the file on the
+ * spot rather than returning an empty array and leaving dead data on Drive.
+ * This "lazy cleanup" approach catches files that stopped receiving writes
+ * (because all players left) but were never explicitly cleaned up.
  */
 function handleGetRecentActions(body) {
   var roomId = (body.roomId || "").trim();
@@ -444,10 +514,35 @@ function handleGetRecentActions(body) {
   var actions = [];
   try { actions = JSON.parse(file.getBlob().getDataAsString()); } catch (err) {}
 
+  // --- TTL pruning on read ---
+  // Always filter out expired entries, even if the caller didn't pass a
+  // "since" parameter. This ensures clients never see stale ghost actions
+  // from players who left hours ago, and keeps the stored file trim.
+  var now = Math.floor(Date.now() / 1000);
+  var ttlCutoff = now - ACTION_TTL_SECONDS;
+  actions = actions.filter(function(a) { return a.timestamp >= ttlCutoff; });
+
+  // Apply the caller's own "since" filter on top of the TTL filter.
+  // The caller may want an even tighter window (e.g., "last 30 seconds").
   var since = body.since || 0;
   if (since > 0) {
     actions = actions.filter(function(a) { return a.timestamp >= since; });
   }
+
+  // --- Lazy file deletion ---
+  // If every entry in the file has expired, trash the file so it doesn't
+  // sit on Drive as dead weight. This handles the common case where two
+  // players were co-located, both left, and no further writes occurred to
+  // trigger the write-path pruning in handleRecordAction.
+  if (actions.length === 0) {
+    file.setTrashed(true);
+    return { success: true, message: "No actions.", data: "[]" };
+  }
+
+  // Write the pruned list back to Drive so subsequent reads (and the
+  // scheduled sweep) see a smaller file. This is safe because we only
+  // removed entries that were already past their TTL.
+  file.setContent(JSON.stringify(actions));
 
   return { success: true, message: "Actions loaded.", data: JSON.stringify(actions) };
 }
@@ -550,6 +645,146 @@ function handleAdminResetAllPlayers(body) {
   }
   var count = deleteAllFilesInFolder(PLAYER_FOLDER_ID);
   return { success: true, message: "Reset complete. " + count + " player files deleted." };
+}
+
+/**
+ * Client-triggered cleanup for a single room's action file.
+ * Request: { roomId }
+ *
+ * WHY THIS EXISTS:
+ * The client calls this when a player's ProximityManager stops polling — i.e.,
+ * when the player pauses the app, navigates away, or loses connectivity.
+ * At that point, the player is no longer co-located with anyone from their
+ * perspective, so their room's action log can be pruned.
+ *
+ * This is a lightweight alternative to a full folder sweep: instead of
+ * iterating every file in ACTIONS_FOLDER (which is expensive on Drive and
+ * could hit Apps Script execution time limits), the client tells us exactly
+ * which room to clean up. If the file is entirely expired, it gets deleted.
+ * If it still has live entries, we just prune the stale ones and shrink it.
+ *
+ * This complements the two other cleanup paths:
+ *   1. Write-path pruning in handleRecordAction (cleans on every write)
+ *   2. Read-path pruning in handleGetRecentActions (cleans on every read)
+ * Together, these three paths ensure action files don't survive long after
+ * the co-location session that created them has ended.
+ */
+function handleCleanupActions(body) {
+  var roomId = (body.roomId || "").trim();
+  if (!roomId) {
+    return { success: false, message: "No roomId provided." };
+  }
+
+  var fileName = "actions_" + roomId + ".json";
+  var file = findFileInFolder(ACTIONS_FOLDER_ID, fileName);
+  if (!file) {
+    // Nothing to clean — file was already removed or never existed.
+    return { success: true, message: "No action file to clean." };
+  }
+
+  var actions = [];
+  try { actions = JSON.parse(file.getBlob().getDataAsString()); } catch (err) { actions = []; }
+
+  // Prune entries older than the TTL
+  var now = Math.floor(Date.now() / 1000);
+  var cutoff = now - ACTION_TTL_SECONDS;
+  actions = actions.filter(function(a) { return a.timestamp >= cutoff; });
+
+  if (actions.length === 0) {
+    // All entries expired — delete the file entirely to free the Drive slot.
+    // This is the most common outcome: the player left, time passed, and
+    // now there's nothing worth keeping.
+    file.setTrashed(true);
+    return { success: true, message: "Action file deleted (all entries expired)." };
+  }
+
+  // Some entries are still live (other players may still be nearby).
+  // Write the pruned list back so the file is smaller for the next reader.
+  file.setContent(JSON.stringify(actions));
+  return { success: true, message: "Pruned to " + actions.length + " live entries." };
+}
+
+/**
+ * Scheduled sweep of the entire ACTIONS_FOLDER.
+ *
+ * WHY THIS EXISTS:
+ * The three request-driven cleanup paths (write, read, client disconnect)
+ * only fire when a client makes a request for a specific room. If all
+ * players go offline simultaneously (e.g., server maintenance, everyone
+ * sleeps), no requests arrive and stale files sit on Drive indefinitely.
+ *
+ * This function is designed to be called by an Apps Script time-driven
+ * trigger (e.g., every hour) to sweep the entire folder. It:
+ *   1. Deletes files where ALL entries are expired (past ACTION_TTL_SECONDS)
+ *   2. Prunes expired entries from files that still have live data
+ *   3. Enforces MAX_ACTION_FILES as a hard cap — if somehow more files
+ *      exist than expected, the oldest are trashed first
+ *
+ * TO SET UP THE TRIGGER:
+ *   1. In the Apps Script editor, go to Triggers (clock icon)
+ *   2. Click "Add Trigger"
+ *   3. Function: sweepStaleActionFiles
+ *   4. Event source: Time-driven
+ *   5. Type: Hour timer → Every hour
+ *   6. Click Save
+ */
+function sweepStaleActionFiles() {
+  if (!ACTIONS_FOLDER_ID) return; // Folder not configured yet
+
+  var folder = DriveApp.getFolderById(ACTIONS_FOLDER_ID);
+  var files = folder.getFiles();
+  var now = Math.floor(Date.now() / 1000);
+  var cutoff = now - ACTION_TTL_SECONDS;
+
+  var deleted = 0;
+  var pruned = 0;
+  var fileList = []; // Track files for MAX_ACTION_FILES enforcement
+
+  while (files.hasNext()) {
+    var file = files.next();
+    var actions = [];
+    try { actions = JSON.parse(file.getBlob().getDataAsString()); } catch (err) { actions = []; }
+
+    // Filter out expired entries
+    var live = actions.filter(function(a) { return a.timestamp >= cutoff; });
+
+    if (live.length === 0) {
+      // Every entry is expired — delete the entire file. This is the main
+      // way we reclaim Drive storage from rooms that are no longer active.
+      file.setTrashed(true);
+      deleted++;
+    } else {
+      // Some entries are still live — write back the pruned version.
+      if (live.length < actions.length) {
+        file.setContent(JSON.stringify(live));
+        pruned++;
+      }
+      // Track this file for the MAX_ACTION_FILES cap check below.
+      // Use the newest entry's timestamp to decide which files to keep
+      // if we need to enforce the cap.
+      var newest = 0;
+      for (var i = 0; i < live.length; i++) {
+        if (live[i].timestamp > newest) newest = live[i].timestamp;
+      }
+      fileList.push({ file: file, newestTimestamp: newest });
+    }
+  }
+
+  // --- MAX_ACTION_FILES enforcement ---
+  // If we still have more files than the cap allows (shouldn't happen in
+  // normal gameplay with 25 testers, but protects against bugs or abuse),
+  // delete the oldest files first. "Oldest" = the file whose newest entry
+  // has the smallest timestamp, meaning it's the least recently active room.
+  if (fileList.length > MAX_ACTION_FILES) {
+    fileList.sort(function(a, b) { return a.newestTimestamp - b.newestTimestamp; });
+    var excess = fileList.length - MAX_ACTION_FILES;
+    for (var j = 0; j < excess; j++) {
+      fileList[j].file.setTrashed(true);
+      deleted++;
+    }
+  }
+
+  Logger.log("Action sweep complete: " + deleted + " files deleted, " + pruned + " files pruned.");
 }
 
 function handleAdminResetAllTrades(body) {

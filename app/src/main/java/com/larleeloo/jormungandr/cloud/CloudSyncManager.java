@@ -360,6 +360,28 @@ public class CloudSyncManager {
         });
     }
 
+    /**
+     * Ask the server to prune stale action entries for a specific room.
+     * Fire-and-forget — the caller doesn't need to wait for the result.
+     *
+     * This is triggered when ProximityManager stops polling (player paused
+     * the app or navigated away). Without this call, the action file for that
+     * room would persist on Drive until the next read/write or the hourly
+     * server sweep. For rooms deep in unexplored regions, that "next" event
+     * might never come, so this proactive cleanup is essential to prevent
+     * the ACTIONS_FOLDER from growing without bound.
+     */
+    public void cleanupActions(String roomId) {
+        executor.execute(() -> {
+            try {
+                client.cleanupActions(roomId);
+            } catch (Exception e) {
+                // Fire-and-forget: cleanup failure is non-critical.
+                // The server's scheduled sweep will catch it eventually.
+            }
+        });
+    }
+
     public void adminResetAllTrades(String accessCode, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.adminResetAllTrades(accessCode);
