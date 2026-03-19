@@ -5239,7 +5239,7 @@
   {
     "itemId": "soulbound_dagger",
     "displayName": "Soulbound Dagger",
-    "description": "A dagger bound to its owner's soul.",
+    "description": "A dagger bound to its owner's soul. Cannot be dropped, traded, or discarded.",
     "type": "WEAPON",
     "subType": "dagger",
     "rarity": "EPIC",
@@ -5255,13 +5255,12 @@
     "placeholderColor": "#4B0082",
     "placeholderShape": "sword",
     "actions": [
-      "SWING",
-      "THROW",
-      "DROP"
+      "SWING"
     ],
     "debuffRegions": [],
-    "buyPrice": 600,
-    "sellPrice": 300
+    "buyPrice": 0,
+    "sellPrice": 0,
+    "soulbound": true
   },
   {
     "itemId": "explosive_bolt",

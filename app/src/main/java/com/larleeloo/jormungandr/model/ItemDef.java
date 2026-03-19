@@ -25,6 +25,7 @@ public class ItemDef {
     private List<Integer> debuffRegions;
     private int buyPrice;
     private int sellPrice;
+    private boolean soulbound;
 
     public ItemDef() {
         this.actions = new ArrayList<>();
@@ -112,4 +113,6 @@ public class ItemDef {
     public void setBuyPrice(int buyPrice) { this.buyPrice = buyPrice; }
     public int getSellPrice() { return sellPrice; }
     public void setSellPrice(int sellPrice) { this.sellPrice = sellPrice; }
+    public boolean isSoulbound() { return soulbound; }
+    public void setSoulbound(boolean soulbound) { this.soulbound = soulbound; }
 }
