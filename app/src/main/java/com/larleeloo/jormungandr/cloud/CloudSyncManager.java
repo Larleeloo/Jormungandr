@@ -360,6 +360,24 @@ public class CloudSyncManager {
         });
     }
 
+    public void adminResetAllTrades(String accessCode, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.adminResetAllTrades(accessCode);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
+    public void adminResetAllActions(String accessCode, SyncCallback callback) {
+        executor.execute(() -> {
+            SyncResult result = client.adminResetAllActions(accessCode);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSyncComplete(result.isSuccess(), result.getMessage()));
+            }
+        });
+    }
+
     /**
      * Run a task on the background executor where network I/O is permitted.
      */

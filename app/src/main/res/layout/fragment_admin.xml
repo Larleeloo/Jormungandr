@@ -133,6 +133,76 @@
                 android:layout_marginTop="8dp" />
         </LinearLayout>
 
+        <!-- Reset All Trade Data -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset All Trade Data"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deletes all trade listing files from the cloud. Active listings at every trading post will be cleared."
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btn_reset_trades"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reset All Trades"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#8B0000"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Reset All Action Data -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/panel_background"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset All Action Data"
+                android:textColor="#FFD700"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deletes all co-location action logs from the cloud. Timestamped action history for every room will be cleared."
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btn_reset_actions"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reset All Actions"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#8B0000"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
         <!-- Status -->
         <TextView
             android:id="@+id/admin_status"

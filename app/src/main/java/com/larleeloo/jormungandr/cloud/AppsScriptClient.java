@@ -234,6 +234,28 @@ public class AppsScriptClient {
         }
     }
 
+    public SyncResult adminResetAllTrades(String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "adminResetAllTrades");
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult adminResetAllActions(String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "adminResetAllActions");
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public boolean isConfigured() {
         return scriptUrl != null && !scriptUrl.isEmpty();
     }

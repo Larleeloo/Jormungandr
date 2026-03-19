@@ -25,7 +25,7 @@ public class AdminFragment extends Fragment {
 
     private CloudSyncManager cloudSyncManager;
     private TextView adminStatus;
-    private Button btnResetRooms, btnResetNotes, btnResetPlayers;
+    private Button btnResetRooms, btnResetNotes, btnResetPlayers, btnResetTrades, btnResetActions;
 
     @Nullable
     @Override
@@ -44,6 +44,8 @@ public class AdminFragment extends Fragment {
         btnResetRooms = view.findViewById(R.id.btn_reset_rooms);
         btnResetNotes = view.findViewById(R.id.btn_reset_notes);
         btnResetPlayers = view.findViewById(R.id.btn_reset_players);
+        btnResetTrades = view.findViewById(R.id.btn_reset_trades);
+        btnResetActions = view.findViewById(R.id.btn_reset_actions);
 
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
@@ -71,6 +73,18 @@ public class AdminFragment extends Fragment {
                 "Reset All Player Saves",
                 "This will delete ALL player save data from the cloud. Every player will need to create a new character.\n\nAre you sure?",
                 () -> resetAllPlayers(accessCode)
+        ));
+
+        btnResetTrades.setOnClickListener(v -> confirmAndExecute(
+                "Reset All Trades",
+                "This will delete ALL trade listing data from the cloud. Active listings at every trading post will be cleared.\n\nAre you sure?",
+                () -> resetAllTrades(accessCode)
+        ));
+
+        btnResetActions.setOnClickListener(v -> confirmAndExecute(
+                "Reset All Actions",
+                "This will delete ALL co-location action logs from the cloud. Timestamped action history for every room will be cleared.\n\nAre you sure?",
+                () -> resetAllActions(accessCode)
         ));
     }
 
@@ -117,6 +131,26 @@ public class AdminFragment extends Fragment {
         });
     }
 
+    private void resetAllTrades(String accessCode) {
+        disableAllButtons();
+        showStatus("Resetting all trade data...", true);
+
+        cloudSyncManager.adminResetAllTrades(accessCode, (success, message) -> {
+            showStatus(message, success);
+            enableAllButtons();
+        });
+    }
+
+    private void resetAllActions(String accessCode) {
+        disableAllButtons();
+        showStatus("Resetting all action data...", true);
+
+        cloudSyncManager.adminResetAllActions(accessCode, (success, message) -> {
+            showStatus(message, success);
+            enableAllButtons();
+        });
+    }
+
     private void sendPlayerToHub() {
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
@@ -152,12 +186,16 @@ public class AdminFragment extends Fragment {
         btnResetRooms.setEnabled(false);
         btnResetNotes.setEnabled(false);
         btnResetPlayers.setEnabled(false);
+        btnResetTrades.setEnabled(false);
+        btnResetActions.setEnabled(false);
     }
 
     private void enableAllButtons() {
         btnResetRooms.setEnabled(true);
         btnResetNotes.setEnabled(true);
         btnResetPlayers.setEnabled(true);
+        btnResetTrades.setEnabled(true);
+        btnResetActions.setEnabled(true);
     }
 
     @Override
