@@ -124,8 +124,22 @@ public class GameRepository {
      * Load a room using the priority: cloud -> generate from WorldMesh.
      * Door connections always come from the pre-built WorldMesh linked list,
      * ensuring the room layout is consistent regardless of data source.
+     *
+     * Sets currentRoom to the loaded/generated room. For operations that
+     * should NOT change currentRoom (e.g. prefetch), use {@link #fetchRoom}.
      */
     public Room loadOrGenerateRoom(String roomId) {
+        Room room = fetchRoom(roomId);
+        currentRoom = room;
+        return currentRoom;
+    }
+
+    /**
+     * Fetch a room from cloud (or generate it) and put it in the cache,
+     * but do NOT update currentRoom. Safe to call from prefetch threads
+     * or background refresh without disrupting the player's active room.
+     */
+    public Room fetchRoom(String roomId) {
         int region = RoomIdHelper.getRegion(roomId);
         int roomNumber = RoomIdHelper.getRoomNumber(roomId);
         int playerLevel = currentPlayer != null ? currentPlayer.getLevel() : 1;
@@ -134,27 +148,27 @@ public class GameRepository {
         Room cloudRoom = roomFileManager.loadRoom(roomId);
         if (cloudRoom != null) {
             applyMeshDoors(cloudRoom, region, roomNumber);
-            currentRoom = cloudRoom;
             roomCache.put(roomId, cloudRoom);
-            return currentRoom;
+            return cloudRoom;
         }
 
         // 2. No cloud data — generate room content based on WorldMesh position
+        Room room;
         if (region == 0) {
-            currentRoom = roomGenerator.generateHubRoom();
+            room = roomGenerator.generateHubRoom();
         } else {
-            currentRoom = roomGenerator.generateRoom(region, roomNumber, playerLevel);
+            room = roomGenerator.generateRoom(region, roomNumber, playerLevel);
         }
 
         if (currentPlayer != null) {
-            currentRoom.setFirstVisitedBy(currentPlayer.getAccessCode());
+            room.setFirstVisitedBy(currentPlayer.getAccessCode());
         }
 
         // Save generated room to cloud
-        roomFileManager.saveRoom(currentRoom);
-        roomCache.put(roomId, currentRoom);
+        roomFileManager.saveRoom(room);
+        roomCache.put(roomId, room);
 
-        return currentRoom;
+        return room;
     }
 
     /**
@@ -272,14 +286,14 @@ public class GameRepository {
             if (callback != null) {
                 callback.onComplete(cached);
             }
-            // Refresh from cloud in background so cache stays fresh
+            // Refresh the cache from cloud in the background so that the
+            // NEXT visit to this room uses fresh data. We intentionally do
+            // NOT overwrite currentRoom here — the cached copy is the
+            // authoritative local state and may already contain player
+            // modifications (opened chests, defeated creatures) that haven't
+            // finished uploading yet.
             cloudSyncManager.executeInBackground(() -> {
-                Room fresh = loadOrGenerateRoom(roomId);
-                if (fresh != null) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        currentRoom = fresh;
-                    });
-                }
+                fetchRoom(roomId);
             });
             return;
         }
@@ -306,7 +320,7 @@ public class GameRepository {
             if (roomCache.get(neighborId) == null) {
                 cloudSyncManager.executeInPrefetchPool(() -> {
                     try {
-                        loadOrGenerateRoom(neighborId);
+                        fetchRoom(neighborId);
                     } catch (Exception e) {
                         Log.w(TAG, "Prefetch failed for " + neighborId, e);
                     }
