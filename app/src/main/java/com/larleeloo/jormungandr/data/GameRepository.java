@@ -238,6 +238,48 @@ public class GameRepository {
         }
     }
 
+    /**
+     * Save the current room to cloud and then run a callback on the same
+     * executor, guaranteeing the save completes before the callback fires.
+     * Used by the turn system to ensure room state is persisted before
+     * advancing to the next player's turn.
+     */
+    public void saveCurrentRoomThen(Runnable afterSave) {
+        if (currentRoom != null) {
+            roomCache.put(currentRoom.getRoomId(), currentRoom);
+            cloudSyncManager.saveRoomThen(currentRoom, afterSave);
+        } else if (afterSave != null) {
+            afterSave.run();
+        }
+    }
+
+    /**
+     * Fetch the latest room state from cloud, bypassing the local cache.
+     * Updates both the cache and currentRoom with the cloud data.
+     * Used during co-location to sync room changes made by other players.
+     */
+    public void refreshCurrentRoomFromCloud(RoomCallback callback) {
+        if (currentRoom == null) {
+            if (callback != null) callback.onComplete(null);
+            return;
+        }
+        final String roomId = currentRoom.getRoomId();
+        cloudSyncManager.executeInBackground(() -> {
+            Room cloudRoom = roomFileManager.loadRoom(roomId);
+            if (cloudRoom != null) {
+                int region = RoomIdHelper.getRegion(roomId);
+                int roomNumber = RoomIdHelper.getRoomNumber(roomId);
+                applyMeshDoors(cloudRoom, region, roomNumber);
+                roomCache.put(roomId, cloudRoom);
+                currentRoom = cloudRoom;
+            }
+            Room result = currentRoom;
+            if (callback != null) {
+                new Handler(Looper.getMainLooper()).post(() -> callback.onComplete(result));
+            }
+        });
+    }
+
     public Room getCurrentRoom() {
         return currentRoom;
     }

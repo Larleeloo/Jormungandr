@@ -46,6 +46,8 @@ public class GameActivity extends AppCompatActivity {
     private Runnable syncHideRunnable;
     private ProximityManager proximityManager;
     private TurnManager turnManager;
+    /** True while refreshing room from cloud at the start of a turn. */
+    private volatile boolean waitingForRoomRefresh;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -313,19 +315,40 @@ public class GameActivity extends AppCompatActivity {
         return turnManager;
     }
 
+    /** Whether the room is being refreshed from cloud (blocks interactions). */
+    public boolean isWaitingForRoomRefresh() {
+        return waitingForRoomRefresh;
+    }
+
     /** Called on main thread by TurnManager when the turn state changes. */
     private void onTurnStateChanged(TurnState state, boolean isMyTurn) {
         if (proximityIndicator == null) return;
 
         if (state == null || !state.isTurnBasedActive()) {
             // Turn-based mode not active — indicator managed by proximity callback
+            waitingForRoomRefresh = false;
             return;
         }
 
         // Override proximity indicator to show turn information
         if (isMyTurn) {
+            // Refresh room from cloud BEFORE allowing interaction so the
+            // player sees the latest state (items already taken, chests
+            // already opened by the previous player).
+            waitingForRoomRefresh = true;
             proximityIndicator.setBackgroundColor(0xCC228B22); // green
-            proximityIndicator.setText("YOUR TURN — Interact with the room!");
+            proximityIndicator.setText("YOUR TURN — Loading latest room...");
+            proximityIndicator.setVisibility(android.view.View.VISIBLE);
+
+            GameRepository repo = GameRepository.getInstance(this);
+            repo.refreshCurrentRoomFromCloud(room -> {
+                waitingForRoomRefresh = false;
+                proximityIndicator.setText("YOUR TURN — Interact with the room!");
+                // Re-render the room if the room fragment is visible
+                if ("room".equals(currentFragmentTag) && currentFragment instanceof RoomFragment) {
+                    ((RoomFragment) currentFragment).refreshDisplay();
+                }
+            });
         } else {
             String holder = state.getCurrentTurnHolder();
             // Resolve access code to a display name via the nearby players list
