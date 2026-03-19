@@ -41,7 +41,7 @@ public class CloudSyncManager {
     public CloudSyncManager() {
         this.client = new AppsScriptClient();
         this.executor = Executors.newSingleThreadExecutor();
-        this.prefetchExecutor = Executors.newFixedThreadPool(3);
+        this.prefetchExecutor = Executors.newFixedThreadPool(4);
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
 

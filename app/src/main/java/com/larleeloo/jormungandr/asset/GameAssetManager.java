@@ -7,6 +7,9 @@ import android.util.LruCache;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Loads sprites by ID from the assets/ folder.
@@ -17,6 +20,8 @@ public class GameAssetManager {
     private static GameAssetManager instance;
     private final Context context;
     private final LruCache<String, Bitmap> cache;
+    /** Paths known to be missing — avoids repeated I/O for non-existent assets. */
+    private final Set<String> missingPaths = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private GameAssetManager(Context context) {
         this.context = context.getApplicationContext();
@@ -41,6 +46,7 @@ public class GameAssetManager {
     public static synchronized void reset() {
         if (instance != null) {
             instance.cache.evictAll();
+            instance.missingPaths.clear();
         }
         instance = null;
     }
@@ -50,6 +56,7 @@ public class GameAssetManager {
      */
     public Bitmap loadSprite(String assetPath) {
         if (assetPath == null || assetPath.isEmpty()) return null;
+        if (missingPaths.contains(assetPath)) return null;
 
         Bitmap cached = cache.get(assetPath);
         if (cached != null) return cached;
@@ -60,9 +67,12 @@ public class GameAssetManager {
             is.close();
             if (bitmap != null) {
                 cache.put(assetPath, bitmap);
+            } else {
+                missingPaths.add(assetPath);
             }
             return bitmap;
         } catch (IOException e) {
+            missingPaths.add(assetPath);
             return null;
         }
     }

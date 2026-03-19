@@ -2,7 +2,6 @@ package com.larleeloo.jormungandr.view;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -23,8 +22,6 @@ import com.larleeloo.jormungandr.model.RoomObject;
 import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -159,7 +156,6 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
         if (bgBitmap != null) {
             canvas.drawBitmap(bgBitmap, null,
                     new RectF(0, 0, canvasWidth, canvasHeight), null);
-            bgBitmap.recycle();
         } else {
             // Gradient-style placeholder background
             backgroundPaint.setColor(bgColor);
@@ -538,21 +534,8 @@ public class RoomCanvasView extends SurfaceView implements SurfaceHolder.Callbac
 
     private Bitmap loadAsset(String assetId) {
         if (assetId == null) return null;
-        String[] paths = {
-                "backgrounds/" + assetId + ".png",
-                "backgrounds/" + assetId + ".gif",
-                "backgrounds/" + assetId + ".jpg",
-                "backgrounds/" + assetId + ".webp",
-        };
-        for (String path : paths) {
-            try {
-                InputStream is = getContext().getAssets().open(path);
-                Bitmap bmp = BitmapFactory.decodeStream(is);
-                is.close();
-                return bmp;
-            } catch (IOException ignored) {}
-        }
-        return null;
+        GameAssetManager assetMgr = GameAssetManager.getInstance(getContext());
+        return assetMgr.loadSpriteById(assetId, "backgrounds");
     }
 
     private static int darken(int color, float factor) {
