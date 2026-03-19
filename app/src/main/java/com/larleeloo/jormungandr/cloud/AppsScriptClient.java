@@ -234,6 +234,28 @@ public class AppsScriptClient {
         }
     }
 
+    /**
+     * Ask the server to prune expired entries from a single room's action file.
+     * Called when the client stops proximity polling (app pause, room exit) so
+     * the server can clean up without waiting for the hourly scheduled sweep.
+     *
+     * This is important because the game has no explicit "log off" event — when
+     * a player backgrounds the app, the only signal is that polling stops. If
+     * we don't tell the server to clean up, that room's action file sits on
+     * Drive until another player happens to read or write to it, or until the
+     * scheduled sweep runs. For rooms in remote regions, that could be days.
+     */
+    public SyncResult cleanupActions(String roomId) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "cleanupActions");
+            body.put("roomId", roomId);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public SyncResult adminResetAllTrades(String accessCode) {
         try {
             JSONObject body = new JSONObject();
