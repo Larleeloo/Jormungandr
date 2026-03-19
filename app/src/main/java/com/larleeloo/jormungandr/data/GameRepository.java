@@ -36,7 +36,7 @@ public class GameRepository {
     private static final String TAG = "GameRepository";
     private static GameRepository instance;
 
-    private static final int ROOM_CACHE_SIZE = 50;
+    private static final int ROOM_CACHE_SIZE = 100;
 
     private final ItemRegistry itemRegistry;
     private final CreatureRegistry creatureRegistry;
@@ -324,6 +324,8 @@ public class GameRepository {
             if (callback != null) {
                 callback.onComplete(cached);
             }
+            // Prefetch neighbors so the next move is also a cache hit
+            cloudSyncManager.executeInPrefetchPool(() -> prefetchAdjacentRooms(roomId));
             return;
         }
 

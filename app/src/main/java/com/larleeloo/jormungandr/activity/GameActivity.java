@@ -33,7 +33,7 @@ import java.util.List;
 public class GameActivity extends AppCompatActivity {
 
     /** Minimum time (ms) to display the loading screen between rooms. */
-    private static final long LOADING_SCREEN_MIN_MS = 1200;
+    private static final long LOADING_SCREEN_MIN_MS = 350;
 
     private TextView hudHp, hudMana, hudStamina, hudLevel, syncIndicator;
     private TextView proximityIndicator;
