@@ -382,6 +382,20 @@ public class CloudSyncManager {
         });
     }
 
+    /**
+     * Leave the turn queue for a room (async, fire-and-forget).
+     * Called when ProximityManager stops or the player navigates away.
+     */
+    public void leaveTurnQueue(String roomId, String accessCode) {
+        executor.execute(() -> {
+            try {
+                client.leaveTurnQueue(roomId, accessCode);
+            } catch (Exception e) {
+                // Fire-and-forget: failure is non-critical.
+            }
+        });
+    }
+
     public void adminResetAllTrades(String accessCode, SyncCallback callback) {
         executor.execute(() -> {
             SyncResult result = client.adminResetAllTrades(accessCode);

@@ -17,7 +17,9 @@ import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.engine.ProximityManager;
+import com.larleeloo.jormungandr.engine.TurnManager;
 import com.larleeloo.jormungandr.engine.WorldMesh;
+import com.larleeloo.jormungandr.model.TurnState;
 import com.larleeloo.jormungandr.fragment.CharacterFragment;
 import com.larleeloo.jormungandr.fragment.CombatFragment;
 import com.larleeloo.jormungandr.fragment.InventoryFragment;
@@ -43,6 +45,7 @@ public class GameActivity extends AppCompatActivity {
     private final Handler syncUiHandler = new Handler(Looper.getMainLooper());
     private Runnable syncHideRunnable;
     private ProximityManager proximityManager;
+    private TurnManager turnManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +104,11 @@ public class GameActivity extends AppCompatActivity {
         // navigates away). Without this, stale action files would accumulate on
         // Drive for every room the player visited during a session.
         proximityManager.setCloudSyncManager(repo.getCloudSyncManager());
+
+        // Turn manager — coordinates turn-based interactions during co-location
+        turnManager = new TurnManager(repo.getCloudClient());
+        turnManager.setListener(this::onTurnStateChanged);
+        proximityManager.setTurnManager(turnManager);
         Player player = repo.getCurrentPlayer();
         String startRoom = Constants.HUB_ROOM_ID;
         if (player != null) {
@@ -300,6 +308,47 @@ public class GameActivity extends AppCompatActivity {
         return proximityManager;
     }
 
+    /** Expose the TurnManager so RoomFragment can check turn state. */
+    public TurnManager getTurnManager() {
+        return turnManager;
+    }
+
+    /** Called on main thread by TurnManager when the turn state changes. */
+    private void onTurnStateChanged(TurnState state, boolean isMyTurn) {
+        if (proximityIndicator == null) return;
+
+        if (state == null || !state.isTurnBasedActive()) {
+            // Turn-based mode not active — indicator managed by proximity callback
+            return;
+        }
+
+        // Override proximity indicator to show turn information
+        if (isMyTurn) {
+            proximityIndicator.setBackgroundColor(0xCC228B22); // green
+            proximityIndicator.setText("YOUR TURN — Interact with the room!");
+        } else {
+            String holder = state.getCurrentTurnHolder();
+            // Resolve access code to a display name via the nearby players list
+            String label = resolvePlayerName(holder);
+            proximityIndicator.setBackgroundColor(0xCCB8860B); // dark gold
+            proximityIndicator.setText("Waiting for " + label + "'s turn...");
+        }
+        proximityIndicator.setVisibility(android.view.View.VISIBLE);
+    }
+
+    /** Resolve an access code to a display name using the proximity list. */
+    private String resolvePlayerName(String accessCode) {
+        if (accessCode == null) return "another player";
+        if (proximityManager != null) {
+            for (NearbyPlayer np : proximityManager.getLastNearby()) {
+                if (accessCode.equals(np.getAccessCode())) {
+                    return np.getName();
+                }
+            }
+        }
+        return accessCode;
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -329,6 +378,9 @@ public class GameActivity extends AppCompatActivity {
         super.onDestroy();
         if (proximityManager != null) {
             proximityManager.shutdown();
+        }
+        if (turnManager != null) {
+            turnManager.shutdown();
         }
     }
 

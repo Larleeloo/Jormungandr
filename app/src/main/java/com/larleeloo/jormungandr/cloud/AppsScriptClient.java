@@ -256,6 +256,55 @@ public class AppsScriptClient {
         }
     }
 
+    // ---- Turn-based co-location ----
+
+    public SyncResult joinTurnQueue(String roomId, String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "joinTurnQueue");
+            body.put("roomId", roomId);
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult endTurn(String roomId, String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "endTurn");
+            body.put("roomId", roomId);
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult leaveTurnQueue(String roomId, String accessCode) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "leaveTurnQueue");
+            body.put("roomId", roomId);
+            body.put("code", accessCode);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+    public SyncResult getTurnState(String roomId) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("action", "getTurnState");
+            body.put("roomId", roomId);
+            return execute(body);
+        } catch (Exception e) {
+            return new SyncResult(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
     public SyncResult adminResetAllTrades(String accessCode) {
         try {
             JSONObject body = new JSONObject();

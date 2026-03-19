@@ -18,6 +18,7 @@ import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.activity.GameActivity;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.engine.ProximityManager;
+import com.larleeloo.jormungandr.engine.TurnManager;
 import com.larleeloo.jormungandr.model.Direction;
 import com.larleeloo.jormungandr.model.InventorySlot;
 import com.larleeloo.jormungandr.model.ItemDef;
@@ -167,6 +168,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             return;
         }
 
+        if (!checkTurnPermission()) return;
+
         GameRepository repo = GameRepository.getInstance(requireContext());
         Room room = repo.getCurrentRoom();
         if (room != null && room.hasLivingCreature()) {
@@ -243,6 +246,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         // Update HUD
         GameActivity activity = (GameActivity) getActivity();
         if (activity != null) activity.updateHud();
+
+        endTurnAfterAction();
     }
 
     private void handleCreatureTap(RoomObject creature) {
@@ -251,10 +256,13 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             return;
         }
 
+        if (!checkTurnPermission()) return;
+
         GameActivity activity = (GameActivity) getActivity();
         if (activity == null) return;
 
         recordCoLocationAction("Engaged " + creature.getCreatureDefId().replace("_", " ") + " in combat");
+        endTurnAfterAction();
         activity.startCombat(creature.getCreatureDefId(), creature.getLevel(), creature.getHp());
     }
 
@@ -263,6 +271,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
             showMessage("A triggered trap. Nothing dangerous now.");
             return;
         }
+
+        if (!checkTurnPermission()) return;
 
         trap.setTriggered(true);
         recordCoLocationAction("Triggered a " + trap.getTrapType() + " trap");
@@ -281,10 +291,14 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
         GameActivity activity = (GameActivity) getActivity();
         if (activity != null) activity.updateHud();
+
+        endTurnAfterAction();
     }
 
     private void handleFloorItemTap(RoomObject floorItem) {
         if (floorItem.getQuantity() <= 0) return;
+
+        if (!checkTurnPermission()) return;
 
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
@@ -305,6 +319,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         repo.savePlayer();
         repo.saveCurrentRoom();
         roomCanvas.renderRoom();
+
+        endTurnAfterAction();
     }
 
     private void handleDecorationTap(RoomObject decoration) {
@@ -366,6 +382,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
     }
 
     private void useTorch() {
+        if (!checkTurnPermission()) return;
+
         GameRepository repo = GameRepository.getInstance(requireContext());
         Player player = repo.getCurrentPlayer();
         Room room = repo.getCurrentRoom();
@@ -400,6 +418,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
         GameActivity activity = (GameActivity) getActivity();
         if (activity != null) activity.updateHud();
+
+        endTurnAfterAction();
     }
 
     private void showMessage(String message) {
@@ -427,5 +447,38 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
         if (player == null || room == null) return;
 
         pm.recordAction(room.getRoomId(), player.getAccessCode(), actionText);
+    }
+
+    /**
+     * Returns true if the player is allowed to interact with room objects.
+     * In turn-based mode (2+ players in the same room), only the current
+     * turn holder can interact. Shows a message if blocked.
+     */
+    private boolean checkTurnPermission() {
+        GameActivity activity = (GameActivity) getActivity();
+        if (activity == null) return true;
+
+        TurnManager tm = activity.getTurnManager();
+        if (tm == null || !tm.isTurnBasedActive()) return true;
+
+        if (!tm.isMyTurn()) {
+            showMessage("Waiting for another player's turn...");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * End the local player's turn after performing a significant action.
+     * Called after chest opens, item pickups, combat starts, trap triggers, etc.
+     */
+    private void endTurnAfterAction() {
+        GameActivity activity = (GameActivity) getActivity();
+        if (activity == null) return;
+
+        TurnManager tm = activity.getTurnManager();
+        if (tm != null && tm.isTurnBasedActive()) {
+            tm.endMyTurn();
+        }
     }
 }
