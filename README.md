@@ -31,6 +31,17 @@ Room IDs follow the format `r{region}_{5-digit-number}` (e.g., `r3_04250`). The 
 
 Directions are cardinal: NORTH (row-1), SOUTH (row+1), WEST (col-1), EAST (col+1).
 
+### Room Types & Generation
+
+Rooms are generated on first visit by `RoomGenerator`:
+
+| Room Type | Chance | Contents |
+|-----------|--------|----------|
+| Creature Den | 20% | Hostile creatures + loot chests (0-3 chests, 1-5 items each) |
+| Empty Room | 80% | Safe passage, rare floor loot |
+| Waypoint | 1 per region | NPC vendor, fast travel, notes |
+| Hub | 1 total | Portals, shop, bank, trading post |
+
 ### Room Lifecycle
 
 1. Player navigates to a room
@@ -57,7 +68,7 @@ All persistence goes through Google Apps Script to Google Drive. No local files 
 
 | Component | Purpose |
 |-----------|---------|
-| `AppsScriptClient` | HTTP client for the Apps Script REST API |
+| `AppsScriptClient` | HTTP client for the Apps Script REST API (OkHttp3, 30s timeouts, max 4 retries with exponential backoff) |
 | `CloudSyncManager` | Async cloud operations on a background executor |
 | `RoomFileManager` | Cloud CRUD for room JSON |
 | `PlayerFileManager` | Cloud CRUD for player JSON |
@@ -73,25 +84,38 @@ Sync points:
 ```
 app/src/main/java/com/larleeloo/jormungandr/
   activity/       MainActivity (login), GameActivity (gameplay)
-  adapter/        RecyclerView adapters (actions, inventory, notes, shop)
-  asset/          GameAssetManager (sprites), SoundManager (audio)
+  adapter/        RecyclerView adapters (actions, inventory, notes, shop, trades)
+  asset/          GameAssetManager (sprites), SoundManager (audio), SpriteLoader
   cloud/          AppsScriptClient, CloudSyncManager, AccessCodeValidator
   data/           GameRepository, ItemRegistry, CreatureRegistry, file managers
-  engine/         WorldMesh, RoomGenerator, CombatEngine, LootGenerator
+  engine/         WorldMesh, RoomGenerator, CombatEngine, LootGenerator, PlayerLevelManager
   fragment/       RoomFragment, HubFragment, MapFragment, CombatFragment,
-                  InventoryFragment, CharacterFragment, AdminFragment, etc.
-  model/          Player, Room, RoomObject, Direction, BiomeType, ItemDef, etc.
-  util/           Constants, RoomIdHelper, SeededRandom, FormulaHelper
-  view/           RoomCanvasView, GridMapCanvasView, CombatCanvasView, etc.
+                  InventoryFragment, CharacterFragment, ShopFragment,
+                  TradingPostFragment, NoteFragment, TransferFragment,
+                  AdminFragment, LoadingFragment
+  model/          Player, Room, RoomObject, Direction, BiomeType, ItemDef,
+                  CreatureDef, CombatCreature, BuffEffect, ActionType, Rarity,
+                  ItemType, InventorySlot, EquipmentSlot, PlayerNote, TradeListing, LootEntry
+  util/           Constants, RoomIdHelper, SeededRandom, FormulaHelper, ColorHelper
+  view/           RoomCanvasView, GridMapCanvasView, CombatCanvasView,
+                  PlaceholderRenderer, HpBarView, CharacterSilhouetteView
 
 cloud/apps-script/
   Code.gs         Google Apps Script REST API (deploy as Web App)
+
+app/src/main/assets/
+  data/           items.json (277 items), creatures.json (45 creatures)
+  backgrounds/    Room background images
+  entities/       Creature sprites
+  items/          Item sprite directories
+  sounds/         Music and SFX
 ```
 
 ## Regions & Biomes
 
 | # | Biome | Color | Enemy Level Offset |
 |---|-------|-------|--------------------|
+| 0 | Hub (Desert Marketplace) | Tan | — |
 | 1 | Red Dungeon | Dark Red | +1 |
 | 2 | Volcanic Waste | Orange | +2 |
 | 3 | Meadow | Gold | +3 |
@@ -99,17 +123,87 @@ cloud/apps-script/
 | 5 | Ocean | Blue | +5 |
 | 6 | Castle | Pink | +6 |
 | 7 | Ice Cave | Light Blue | +7 |
-| 8 | Void | Indigo | +8 |
+| 8 | The Void | Indigo | +8 |
 
 ## Gameplay
 
-- **Navigation**: Tap cardinal doors (N/S/E/W) to move between rooms
-- **Combat**: Pokemon-style action selection (8-48 actions based on equipped items)
-- **Inventory**: Stackable items (max 16 per slot), D&D-style stat investment
-- **Waypoints**: Discovering a region's waypoint adds a portal to the hub
-- **Portals**: One-way doors to other regions' waypoints
-- **Notes**: Leave messages for other players in waypoints, creature dens, and the hub
-- **Death**: Respawn at hub with half HP, room state preserved
+### Navigation
+
+- Tap cardinal doors (N/S/E/W) to move between rooms
+- Each move costs 1 stamina
+- Stamina regenerates by 1 per non-waypoint room entered
+- Discovering a region's waypoint adds a portal to the hub for fast travel
+- Portals are one-way doors to other regions' waypoints
+
+### Combat System
+
+Pokemon-style turn-based battles with action selection:
+
+| Action | Type | Stamina Cost | Notes |
+|--------|------|:---:|-------|
+| Swing | Melee | 2 | Standard melee attack |
+| Shoot | Ranged | 2 | Ranged attack (requires bow/crossbow) |
+| Cast | Magic | 3 | Magic attack (uses mana) |
+| Throw | Consumable | 1 | Throw a consumable item |
+| Block | Defensive | 1 | Reduces incoming damage |
+
+- **Exhaustion**: Running out of stamina reduces all damage dealt by 50%
+- **Free buff/potion usage**: Before the main action each turn, players can use a buff or potion at no stamina cost
+- **Creature AI**: Weighted random ability selection from creature's ability pool
+- **Loot drops**: Creatures drop items based on their loot table and rarity weights
+
+### Character Progression
+
+- **Level-up**: Gain 3 stat points per level to allocate freely
+- **XP scaling**: Base 100 XP for level 2, multiplied by 1.5x per subsequent level
+- **Stats**:
+
+| Stat | Effect |
+|------|--------|
+| Strength | Melee damage, inventory capacity (8-48 slots) |
+| Dexterity | Ranged damage, dodge chance |
+| Constitution | Max HP, max stamina, defense |
+| Intelligence | Magic damage, max mana |
+
+- **Starting stats**: 20 HP, 10 mana, 10 stamina
+- **Creature difficulty**: Scales by 0.15 per player level + region level offset
+
+### Inventory & Equipment
+
+- **Inventory slots**: 8 base, scaling up to 48 with Strength
+- **Stack size**: Max 16 items per slot
+- **Equipment slots**: Weapons, armor (chest/legs/gauntlets/helmet/boots), accessories
+- **Item interaction**: Equip, use, drop, or sell items from inventory
+
+### Shop & Economy
+
+- **Hub vendor**: Buy and sell items at waypoints and the hub
+- **Gold**: Earned from creature drops and selling items
+- **Buy/sell prices**: Defined per item in `items.json`
+
+### Trading Post
+
+- **Player-to-player trading**: List items for sale at a set gold price
+- **Trade listings**: Other players can browse and accept trade offers
+- **Managed via** `TradingPostFragment` and cloud-synced `TradeListing` objects
+
+### Bank Storage
+
+- **Secure storage**: Separate bank inventory accessible at the hub
+- **Transfer items**: Move items between inventory and bank via `TransferFragment`
+- **Persistence**: Bank contents saved with player data to cloud
+
+### Notes System
+
+- Leave messages for other players in waypoints, creature dens, and the hub
+- Notes persist in cloud and are visible to all players who visit the room
+- Each note records author access code, timestamp, and content
+
+### Death & Respawn
+
+- On death, respawn at hub with 50% HP
+- Room state (opened chests, killed creatures) is preserved
+- No item or gold loss on death
 
 ### Admin Features (JORM-ALPHA-001 to 003)
 
@@ -118,6 +212,53 @@ cloud/apps-script/
 - **Travel anywhere**: "Travel Here" button in the inspector for direct teleportation
 - **Reset controls**: Admin panel to wipe all rooms, notes, or player saves from cloud
 
+## Items & Creatures
+
+### Item Categories (277 total in `items.json`)
+
+| Category | Examples | Count |
+|----------|----------|:---:|
+| Weapons | Swords, axes, bows, staffs, daggers, crossbows | 70+ |
+| Armor | Chestplates, leggings, gauntlets, helmets, boots | 60+ |
+| Clothing | Shirts, dresses, hats, shoes, robes | 80+ |
+| Accessories | Rings, necklaces, bracelets | 30+ |
+| Consumables | Health/mana/stamina potions, food | 20+ |
+| Tools | Pickaxes, shovels, fishing rods | 15+ |
+| Materials | Ores, gems, crafting components | 25+ |
+| Misc | Keys, scrolls, collectibles | 40+ |
+
+### Item Rarity Tiers
+
+| Rarity | Color | Drop Rate |
+|--------|-------|-----------|
+| Common | White | 50% |
+| Uncommon | Green | 25% |
+| Rare | Blue | 15% |
+| Epic | Purple | 8% |
+| Legendary | Orange | 1.5% |
+| Mythic | Cyan | 0.5% |
+
+### Creatures (45 species in `creatures.json`)
+
+Each region has its own themed creature set. Creatures have base stats, XP rewards, ability pools, and loot tables. Stats scale with player level via `DIFFICULTY_SCALE_PER_LEVEL` (0.15).
+
+## Rendering & Assets
+
+### Canvas Views
+
+| View | Purpose |
+|------|---------|
+| `RoomCanvasView` | Draws current room: background, doors, objects, UI overlays |
+| `GridMapCanvasView` | Region grid map with visited/undiscovered room visualization |
+| `CombatCanvasView` | Combat scene with creature sprite and HP bars |
+
+### Asset Management
+
+- **`GameAssetManager`**: LRU bitmap cache singleton for sprites; auto-resets on version update
+- **`SpriteLoader`**: Loads images from assets folders with fallback to `PlaceholderRenderer`
+- **`PlaceholderRenderer`**: Procedurally generates colored shapes when sprite assets are unavailable
+- **`SoundManager`**: MediaPlayer for background music + SoundPool for SFX; auto-resets on version update
+
 ## Setup
 
 ### Prerequisites
@@ -125,6 +266,17 @@ cloud/apps-script/
 - Android Studio (Arctic Fox or later)
 - JDK 21
 - Android SDK 35 (compileSdk) with minSdk 24
+
+### Dependencies
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| androidx.appcompat | 1.7.0 | Android backward compatibility |
+| androidx.constraintlayout | 2.2.0 | Flexible UI layouts |
+| com.google.android.material | 1.12.0 | Material Design components |
+| com.google.code.gson | 2.11.0 | JSON serialization/deserialization |
+| com.squareup.okhttp3 | 4.12.0 | HTTP client for cloud API |
+| junit | 4.13.2 | Unit testing (test only) |
 
 ### Cloud Sync Setup
 
@@ -208,20 +360,11 @@ All requests are POST with JSON body containing an `action` field.
 | `listRooms` | `{ region }` | `{ success, data }` |
 | `getNotes` | `{ roomId }` | `{ success, data }` |
 | `saveNote` | `{ roomId, code, note }` | `{ success, message }` |
+| `getTrades` | `{ roomId }` | `{ success, data }` |
+| `saveTrades` | `{ roomId, data }` | `{ success, message }` |
 | `adminResetAllRooms` | `{ code }` | `{ success, message }` |
 | `adminResetAllNotes` | `{ code }` | `{ success, message }` |
 | `adminResetAllPlayers` | `{ code }` | `{ success, message }` |
-
-## Item Rarity Tiers
-
-| Rarity | Color | Drop Rate |
-|--------|-------|-----------|
-| Common | White | 50% |
-| Uncommon | Green | 25% |
-| Rare | Blue | 15% |
-| Epic | Purple | 8% |
-| Legendary | Orange | 1.5% |
-| Mythic | Cyan | 0.5% |
 
 ## Key Constants
 
@@ -230,8 +373,31 @@ All requests are POST with JSON body containing an `action` field.
 | `WORLD_SEED` | `0x4A6F726D756E4CL` | Deterministic world generation seed |
 | `GRID_SIZE` | 100 | 100x100 rooms per region |
 | `NUM_REGIONS` | 8 | Themed biome regions |
+| `ROOMS_PER_REGION` | 10,000 | Total rooms per region |
 | `MAZE_EXTRA_CONNECTION_CHANCE` | 0.08 | 8% chance for extra passages |
 | `CREATURE_DEN_CHANCE` | 0.20 | 20% rooms are creature dens |
 | `MAX_STACK_SIZE` | 16 | Items per inventory slot |
+| `MIN_INVENTORY_SLOTS` | 8 | Starting inventory capacity |
+| `MAX_INVENTORY_SLOTS` | 48 | Max inventory slots (Strength-scaled) |
 | `STARTING_HP` | 20 | New player hit points |
+| `STARTING_MANA` | 10 | New player mana |
+| `STARTING_STAMINA` | 10 | New player stamina |
+| `STAT_POINTS_PER_LEVEL` | 3 | Points to allocate per level |
+| `BASE_XP_TO_LEVEL` | 100 | XP required for level 2 |
+| `XP_SCALING_FACTOR` | 1.5 | XP growth multiplier per level |
 | `DIFFICULTY_SCALE_PER_LEVEL` | 0.15 | Creature stat scaling per level |
+| `STAMINA_COST_MOVE` | 1 | Movement stamina cost |
+| `STAMINA_COST_SWING` | 2 | Melee attack stamina cost |
+| `STAMINA_REGEN_PER_ROOM` | 1 | Stamina regen per non-waypoint room |
+
+## Codebase Statistics
+
+| Metric | Value |
+|--------|-------|
+| Java source files | 68 |
+| Lines of Java code | ~9,570 |
+| Item definitions | 277 |
+| Creature definitions | 45 |
+| UI Fragments | 12 |
+| Model classes | 18 |
+| Total game rooms | 80,001 (80,000 + hub) |
