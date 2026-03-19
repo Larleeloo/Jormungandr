@@ -17,6 +17,7 @@ import com.larleeloo.jormungandr.R;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.data.GameRepository;
 import com.larleeloo.jormungandr.engine.ProximityManager;
+import com.larleeloo.jormungandr.engine.WorldMesh;
 import com.larleeloo.jormungandr.fragment.CharacterFragment;
 import com.larleeloo.jormungandr.fragment.CombatFragment;
 import com.larleeloo.jormungandr.fragment.InventoryFragment;
@@ -80,6 +81,13 @@ public class GameActivity extends AppCompatActivity {
         if (Constants.APPS_SCRIPT_URL.isEmpty()) {
             showSyncStatus(false, "Cloud sync not configured. Set APPS_SCRIPT_URL in Constants.java");
         }
+
+        // Start building the 80,000-room WorldMesh on a background thread
+        // immediately. The mesh only contains door connections (no room
+        // content) and takes ~1-2 seconds to build. By starting it now —
+        // while the loading screen is visible — it will almost always be
+        // ready before the first fetchRoom() call needs it.
+        WorldMesh.initAsync();
 
         // Load the initial room asynchronously so the cloud fetch runs off
         // the main thread (where network I/O is forbidden on Android).
