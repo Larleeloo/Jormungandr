@@ -450,27 +450,64 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
     }
 
     /**
+     * Refresh the room display from the current in-memory room state.
+     * Called by GameActivity after a cloud room refresh completes.
+     */
+    public void refreshDisplay() {
+        if (!isAdded()) return;
+        GameRepository repo = GameRepository.getInstance(requireContext());
+        Room room = repo.getCurrentRoom();
+        if (room != null) {
+            roomCanvas.setRoom(room);
+            roomCanvas.renderRoom();
+            updateTorchButton(room);
+        }
+    }
+
+    /**
      * Returns true if the player is allowed to interact with room objects.
-     * In turn-based mode (2+ players in the same room), only the current
-     * turn holder can interact. Shows a message if blocked.
+     * Blocks in three cases:
+     * 1. Turn-based mode active and it's not your turn
+     * 2. Co-located players detected but turn queue not established yet
+     * 3. Room refresh in progress (waiting for latest cloud state)
      */
     private boolean checkTurnPermission() {
         GameActivity activity = (GameActivity) getActivity();
         if (activity == null) return true;
 
-        TurnManager tm = activity.getTurnManager();
-        if (tm == null || !tm.isTurnBasedActive()) return true;
-
-        if (!tm.isMyTurn()) {
-            showMessage("Waiting for another player's turn...");
+        // Block during room refresh — stale state could allow duplicates
+        if (activity.isWaitingForRoomRefresh()) {
+            showMessage("Syncing room state...");
             return false;
         }
+
+        ProximityManager pm = activity.getProximityManager();
+        TurnManager tm = activity.getTurnManager();
+
+        if (tm != null && tm.isTurnBasedActive()) {
+            if (!tm.isMyTurn()) {
+                showMessage("Waiting for another player's turn...");
+                return false;
+            }
+            return true;
+        }
+
+        // Co-located players detected but turn queue not yet established —
+        // block actions until the async joinTurnQueue completes.
+        if (pm != null && pm.hasCoLocatedPlayers()) {
+            showMessage("Syncing with nearby player...");
+            return false;
+        }
+
         return true;
     }
 
     /**
      * End the local player's turn after performing a significant action.
-     * Called after chest opens, item pickups, combat starts, trap triggers, etc.
+     * Queues the endTurn call on CloudSyncManager's single-threaded
+     * executor so it runs AFTER any pending room save (which was already
+     * submitted by the calling handler's saveCurrentRoom()). This
+     * guarantees the next player fetches the updated room state.
      */
     private void endTurnAfterAction() {
         GameActivity activity = (GameActivity) getActivity();
@@ -478,7 +515,8 @@ public class RoomFragment extends Fragment implements RoomCanvasView.RoomInterac
 
         TurnManager tm = activity.getTurnManager();
         if (tm != null && tm.isTurnBasedActive()) {
-            tm.endMyTurn();
+            GameRepository repo = GameRepository.getInstance(requireContext());
+            repo.getCloudSyncManager().executeInBackground(() -> tm.endMyTurn());
         }
     }
 }

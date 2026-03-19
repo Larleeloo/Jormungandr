@@ -93,6 +93,24 @@ public class CloudSyncManager {
     }
 
     /**
+     * Upload room data to Drive, then run a follow-up task on the SAME
+     * executor. Because the executor is single-threaded, the follow-up
+     * is guaranteed to run after the save completes. This is used by
+     * the turn system: the room must be persisted before we tell the
+     * server to advance the turn, otherwise the next player might
+     * fetch stale room data.
+     */
+    public void saveRoomThen(Room room, Runnable afterSave) {
+        executor.execute(() -> {
+            String json = JsonHelper.toJson(room);
+            client.saveRoom(room.getRoomId(), json);
+            if (afterSave != null) {
+                afterSave.run();
+            }
+        });
+    }
+
+    /**
      * Download room data from Drive (async). Replaces in-memory room content with
      * cloud data while preserving door connections from the pre-built WorldMesh.
      */
