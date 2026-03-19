@@ -5,6 +5,8 @@ import com.larleeloo.jormungandr.util.Constants;
 import com.larleeloo.jormungandr.util.RoomIdHelper;
 import com.larleeloo.jormungandr.util.SeededRandom;
 
+import android.util.Log;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,6 +14,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * World room layout graph for all rooms across 8 regions.
@@ -29,24 +32,98 @@ import java.util.Map;
  */
 public class WorldMesh {
 
+    private static final String TAG = "WorldMesh";
+
     private static WorldMesh instance;
+
+    /**
+     * Latch that reaches zero when buildMesh() finishes.
+     * Any thread calling getInstance() while the build is in progress will
+     * block on this latch instead of holding the class monitor, which keeps
+     * the main thread responsive while the mesh builds in the background.
+     */
+    private static CountDownLatch buildLatch;
 
     /** All room nodes keyed by room ID. */
     private final Map<String, RoomNode> nodes = new HashMap<>();
 
     private WorldMesh() {}
 
-    public static synchronized WorldMesh getInstance() {
-        if (instance == null) {
-            instance = new WorldMesh();
-            instance.buildMesh();
+    /**
+     * Kick off mesh construction on a background thread. Call this as early
+     * as possible (e.g. in GameActivity.onCreate) so the mesh builds while
+     * the initial loading screen is displayed. Subsequent calls are no-ops
+     * if a build is already running or complete.
+     */
+    public static synchronized void initAsync() {
+        if (instance != null || buildLatch != null) {
+            return; // Already built or build in progress
         }
-        return instance;
+        buildLatch = new CountDownLatch(1);
+        Thread builder = new Thread(() -> {
+            long start = System.currentTimeMillis();
+            WorldMesh mesh = new WorldMesh();
+            mesh.buildMesh();
+            synchronized (WorldMesh.class) {
+                instance = mesh;
+            }
+            buildLatch.countDown();
+            long elapsed = System.currentTimeMillis() - start;
+            Log.i(TAG, "WorldMesh built in " + elapsed + "ms ("
+                    + mesh.nodes.size() + " rooms)");
+        }, "WorldMesh-Builder");
+        builder.start();
+    }
+
+    /**
+     * Return the singleton mesh, building it synchronously if necessary.
+     * If {@link #initAsync()} was called earlier the mesh is likely ready;
+     * if the background build is still running this method blocks until it
+     * completes rather than starting a duplicate build.
+     */
+    public static WorldMesh getInstance() {
+        // Fast path — already built
+        if (instance != null) {
+            return instance;
+        }
+
+        // A background build is in progress — wait for it
+        CountDownLatch latch;
+        synchronized (WorldMesh.class) {
+            if (instance != null) {
+                return instance;
+            }
+            latch = buildLatch;
+        }
+
+        if (latch != null) {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.w(TAG, "Interrupted while waiting for WorldMesh build", e);
+            }
+            return instance;
+        }
+
+        // No async build was started — fall back to synchronous build
+        synchronized (WorldMesh.class) {
+            if (instance == null) {
+                long start = System.currentTimeMillis();
+                instance = new WorldMesh();
+                instance.buildMesh();
+                long elapsed = System.currentTimeMillis() - start;
+                Log.i(TAG, "WorldMesh built synchronously in " + elapsed + "ms ("
+                        + instance.nodes.size() + " rooms)");
+            }
+            return instance;
+        }
     }
 
     /** Clear the cached instance so it rebuilds on next access. */
     public static synchronized void reset() {
         instance = null;
+        buildLatch = null;
     }
 
     // ---- Public accessors ----
