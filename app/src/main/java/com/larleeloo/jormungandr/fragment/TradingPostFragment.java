@@ -186,6 +186,13 @@ public class TradingPostFragment extends Fragment implements TradeListingAdapter
             return;
         }
 
+        // Soulbound items cannot be traded
+        ItemDef selectedItem = repo.getItemRegistry().getItem(selectedItemId);
+        if (selectedItem != null && selectedItem.isSoulbound()) {
+            Toast.makeText(requireContext(), "Soulbound items cannot be traded", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Deduct listed quantity from inventory slot
         int remaining = slot.getQuantity() - listQty;
         if (remaining <= 0) {

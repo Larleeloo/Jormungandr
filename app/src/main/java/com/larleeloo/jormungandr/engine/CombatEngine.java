@@ -8,6 +8,7 @@ import com.larleeloo.jormungandr.model.EquipmentSlot;
 import com.larleeloo.jormungandr.model.ItemDef;
 import com.larleeloo.jormungandr.model.Player;
 import com.larleeloo.jormungandr.data.ItemRegistry;
+import com.larleeloo.jormungandr.cloud.AccessCodeValidator;
 import com.larleeloo.jormungandr.util.FormulaHelper;
 
 import java.util.ArrayList;
@@ -170,6 +171,12 @@ public class CombatEngine {
 
         int totalDefense = playerDefense + blockBonus;
         int damage = Math.max(1, creatureAttack - totalDefense);
+
+        // Admin invincibility: admin players take no damage
+        boolean adminInvincible = AccessCodeValidator.isAdminCode(player.getAccessCode());
+        if (adminInvincible) {
+            damage = 0;
+        }
 
         // Check if shield breaks
         boolean shieldBroken = false;

@@ -434,6 +434,13 @@ public class InventoryFragment extends Fragment implements InventoryAdapter.OnSl
         InventorySlot slot = player.getInventory().get(selectedSlotIndex);
         if (slot.isEmpty()) return;
 
+        // Soulbound items cannot be dropped
+        ItemDef itemDef = repo.getItemRegistry().getItem(slot.getItemId());
+        if (itemDef != null && itemDef.isSoulbound()) {
+            Toast.makeText(requireContext(), "Soulbound items cannot be dropped", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Clear the slot completely to prevent ghost items
         slot.setItemId(null);
         slot.setQuantity(0);

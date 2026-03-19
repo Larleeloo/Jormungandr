@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 import android.util.LruCache;
 
+import com.larleeloo.jormungandr.cloud.AccessCodeValidator;
 import com.larleeloo.jormungandr.cloud.AppsScriptClient;
 import com.larleeloo.jormungandr.cloud.CloudSyncManager;
 import com.larleeloo.jormungandr.engine.RoomGenerator;
@@ -91,6 +92,12 @@ public class GameRepository {
         player.setAccessCode(accessCode);
         player.setName(name);
         FormulaHelper.recalculatePlayerStats(player);
+
+        // Admin players start with a soulbound dagger
+        if (AccessCodeValidator.isAdminCode(accessCode)) {
+            player.addItemToInventory("soulbound_dagger", 1);
+        }
+
         currentPlayer = player;
         savePlayer();
         return player;
