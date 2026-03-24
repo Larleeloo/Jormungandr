@@ -11,7 +11,7 @@ A turn-based roguelike dungeon crawler for Android. Players explore a shared clo
 - **8 regions**, each a 100x100 grid maze (10,000 rooms per region, 80,000 total)
 - **1 central hub** with portal doors to discovered waypoints
 - **Deterministic world generation** from a single seed (`WORLD_SEED`) — all players share the same maze layout
-- **Cloud-backed persistence** — all player saves, room state, and notes live in Google Drive via Apps Script
+- **Cloud-backed persistence** — all player saves, room state, and notes live in Google Drive via Apps Script (migrating to WebSocket server — see [Multiplayer Server](#multiplayer-server))
 - **25 testing access codes** (JORM-ALPHA-001 through JORM-ALPHA-025)
 - **3 admin codes** (JORM-ALPHA-001, 002, 003) with full map view, room inspector, and reset capabilities
 
@@ -62,9 +62,14 @@ Rooms are generated on first visit by `RoomGenerator`:
 
 All singletons are invalidated automatically when `versionCode` changes (see [Releasing Updates](#releasing-updates)).
 
-### Cloud Sync
+### Cloud Sync (Current — Apps Script)
 
-All persistence goes through Google Apps Script to Google Drive. No local files are stored.
+> **Note:** This backend is being replaced by a dedicated WebSocket server.
+> See [Multiplayer Server](#multiplayer-server) for the new architecture.
+> The Apps Script backend and all existing client code remain functional
+> during the transition.
+
+All persistence currently goes through Google Apps Script to Google Drive. No local files are stored.
 
 | Component | Purpose |
 |-----------|---------|
@@ -78,6 +83,72 @@ Sync points:
 - **In-room interactions**: Chest opens, item pickups, combat wins trigger async room upload
 - **App pause**: Player + current room synced to cloud
 - **Combat return**: Room + player synced after victory
+
+### Multiplayer Server (Planned — WebSocket)
+
+A dedicated WebSocket server under `server/` replaces the Apps Script + Google Drive
+backend with real-time (<25ms) communication. Designed for 25 concurrent players
+on a single Google Cloud E2-micro instance (free tier).
+
+See `server/ARCHITECTURE.md` for the full design document, deployment guide, and
+client migration plan.
+
+#### Why migrate
+
+| Metric             | Apps Script (current) | WebSocket Server (planned) |
+|--------------------|-----------------------|----------------------------|
+| Latency            | 200-800ms per request | 5-15ms per message         |
+| Proximity polling  | 5-10s intervals       | Instant push               |
+| Turn state         | 2s polling            | Instant broadcast          |
+| Concurrency        | Sequential requests   | 25 concurrent WebSockets   |
+| Persistence        | Google Drive files    | SQLite (single file)       |
+| Cost               | Free (quota limited)  | ~$0/mo (GCP free tier)     |
+
+#### Server stack
+
+| Component | Choice | Why |
+|-----------|--------|-----|
+| Language  | Java 21 | Matches Android client |
+| Framework | Spring Boot 3.2 | WebSocket support, DI, scheduling |
+| Database  | SQLite (WAL mode) | Zero config, sub-ms reads, trivial backups |
+| JSON      | GSON 2.11 | Same library as Android client |
+
+#### Server architecture
+
+```
+server/
+├── ARCHITECTURE.md                       # Full design doc & deployment guide
+├── build.gradle                          # Spring Boot + SQLite + GSON
+├── src/main/java/.../server/
+│   ├── JormungandrServer.java            # Entry point
+│   ├── config/                           # WebSocket config, constants
+│   ├── websocket/                        # Connection handler, session registry
+│   ├── handler/                          # Player, Room, Note, Trade, Proximity,
+│   │                                     #   Turn, Admin (mirrors Apps Script API)
+│   ├── store/                            # SQLite persistence layer
+│   └── model/                            # Client/Server message protocol
+└── src/main/resources/
+    ├── schema.sql                        # Database tables
+    └── application.properties            # Port, DB path, logging
+```
+
+#### Key improvements
+
+- **Real-time push** — Turn state changes and co-location actions are broadcast
+  instantly over persistent WebSocket connections (no more polling)
+- **In-memory session tracking** — The server knows every player's current room.
+  Proximity checks are O(25) map scans with zero I/O
+- **Turn queue in memory** — Sub-microsecond join/leave/advance operations with
+  automatic stale-turn advancement
+- **Wire-compatible** — Same `{success, message, data}` response contract as Apps
+  Script. The Android client needs a new WebSocket transport but zero model changes
+
+#### Client migration (when ready)
+
+1. Replace `AppsScriptClient` with a WebSocket client connecting to `ws://<host>:8080/game`
+2. Remove polling from `ProximityManager` and `TurnManager` (server pushes events)
+3. Replace `APPS_SCRIPT_URL` constant with `WEBSOCKET_URL`
+4. Add reconnection logic with exponential backoff
 
 ### Project Structure
 
@@ -102,6 +173,12 @@ app/src/main/java/com/larleeloo/jormungandr/
 
 cloud/apps-script/
   Code.gs         Google Apps Script REST API (deploy as Web App)
+
+server/             WebSocket multiplayer server (Spring Boot + SQLite)
+  ARCHITECTURE.md   Full design doc, deployment guide, migration plan
+  build.gradle      Standalone Gradle build (Java 21, Spring Boot 3.2)
+  src/main/java/    Server source: handlers, stores, WebSocket layer
+  src/main/resources/  schema.sql, application.properties
 
 app/src/main/assets/
   data/           items.json (277 items), creatures.json (45 creatures)
@@ -345,7 +422,10 @@ All singletons are then lazily re-initialized with the latest code on next acces
 - Changes to serialization format (Player, Room models)
 - Basically: **every release should bump versionCode**
 
-## Apps Script API Reference
+## Apps Script API Reference (Current Backend)
+
+> This API is being superseded by the WebSocket server protocol.
+> See `server/ARCHITECTURE.md` for the new message protocol reference.
 
 All requests are POST with JSON body containing an `action` field.
 
@@ -394,8 +474,10 @@ All requests are POST with JSON body containing an `action` field.
 
 | Metric | Value |
 |--------|-------|
-| Java source files | 68 |
-| Lines of Java code | ~9,570 |
+| Android Java source files | 68 |
+| Server Java source files | 16 |
+| Lines of Java code (Android) | ~9,570 |
+| Lines of Java code (Server) | ~2,285 |
 | Item definitions | 277 |
 | Creature definitions | 45 |
 | UI Fragments | 12 |
